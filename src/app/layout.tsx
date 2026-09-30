@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "W-Seminar-Helfer",
-  description: "Sparringspartner für deine W-Seminararbeit",
+  description: "Sparringspartner und Schreibhilfe für deine W-Seminararbeit",
   robots: { index: false, follow: false },
 };
 

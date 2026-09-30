@@ -31,4 +31,10 @@ export const TOOL_CARDS: ToolCard[] = [
     description: "Übe die Fragen der Prüfung im Gespräch.",
     href: "/tools/kolloquium",
   },
+  {
+    id: "schreibassistent",
+    title: "Schreibassistent",
+    description: "Formuliert Einleitung, Abschnitte, Überleitungen oder ein Fazit aus deinen Stichpunkten. Nur im Schreibmodus.",
+    href: "/tools/schreibassistent",
+  },
 ];

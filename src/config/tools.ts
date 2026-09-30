@@ -1,6 +1,6 @@
 import type { ModelId } from "./models";
 
-export type ToolId = "fragestellung" | "quellenkritik" | "roter-faden" | "kolloquium";
+export type ToolId = "fragestellung" | "quellenkritik" | "roter-faden" | "kolloquium" | "schreibassistent";
 
 export interface ToolField {
   key: string;
@@ -63,6 +63,20 @@ export const TOOLS: Record<ToolId, ToolConfig> = {
       { key: "schwierigkeit", label: "Schwierigkeitsgrad", maxChars: 20, required: true, options: ["freundlich", "normal", "streng"] },
     ],
   },
+  // Nur im Schreibmodus verfügbar (prüft der Server).
+  schreibassistent: {
+    model: "claude-sonnet-5-5",
+    maxTokens: 4000,
+    effort: "low",
+    minBudgetCents: 5,
+    fields: [
+      { key: "aufgabe", label: "Aufgabe", maxChars: 20, required: true, options: ["Einleitung", "Abschnitt", "Überleitung", "Fazit", "Überarbeiten"] },
+      { key: "laenge", label: "Länge", maxChars: 10, required: true, options: ["kurz", "mittel", "lang"] },
+      { key: "fragestellung", label: "Fragestellung der Arbeit", maxChars: 600, required: false },
+      { key: "inhalt", label: "Stichpunkte / Inhalt", maxChars: 4000, required: false },
+      { key: "text", label: "Vorhandener Text", maxChars: 6000, required: false },
+    ],
+  },
 };
 
 // Maximale Anfragen pro Code und Tag (Redis-Zähler). Ein Kolloquium braucht bis zu 11 Anfragen.
@@ -79,4 +93,5 @@ export const KOLLOQUIUM = {
   maxQuestionChars: 3000,
   questionMaxTokens: 600,
   feedbackMaxTokens: 2000,
+  feedbackMaxTokensSchreiben: 3500, // mit Beispielantworten
 };

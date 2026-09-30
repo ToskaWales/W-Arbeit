@@ -27,10 +27,13 @@ async function readBody(request: Request): Promise<{ tool: unknown; input: ToolI
     } catch {
       throw new InputError("Ungültige Anfrage.");
     }
-    return { tool: form.get("tool"), input: { fields, file: file instanceof File && file.size > 0 ? file : null } };
+    return {
+      tool: form.get("tool"),
+      input: { mode: form.get("mode"), fields, file: file instanceof File && file.size > 0 ? file : null },
+    };
   }
   const body = await request.json();
-  return { tool: body.tool, input: { fields: body.fields, history: body.history, finish: body.finish } };
+  return { tool: body.tool, input: { mode: body.mode, fields: body.fields, history: body.history, finish: body.finish } };
 }
 
 export async function POST(request: Request) {

@@ -1,4 +1,7 @@
+"use client";
+
 import { FormattedText } from "./formatted-text";
+import { useMode } from "./mode-store";
 import type { Phase } from "./use-tool-stream";
 
 export function Spinner({ children }: { children: React.ReactNode }) {
@@ -23,6 +26,11 @@ export function ResultView({
   waitingText: string;
   doneNote?: string;
 }) {
+  const [mode] = useMode();
+  const note =
+    mode === "schreiben"
+      ? "Die KI kann sich irren. Prüfe alle Fakten, ersetze „[Beleg nötig]“ durch echte Quellen und gib die KI-Hilfe in deiner Arbeit an."
+      : doneNote;
   return (
     <div className="mt-6 scroll-mt-4" aria-busy={phase === "waiting" || phase === "streaming"}>
       {phase === "waiting" && <Spinner>{waitingText}</Spinner>}
@@ -32,7 +40,7 @@ export function ResultView({
           {phase === "streaming" && <span className="mt-2 inline-block animate-pulse text-zinc-400">▍</span>}
         </section>
       )}
-      {phase === "done" && doneNote && <p className="mt-3 text-sm text-zinc-500">{doneNote}</p>}
+      {phase === "done" && note && <p className="mt-3 text-sm text-zinc-500">{note}</p>}
       {error && <p role="alert" className="mt-3 rounded bg-red-50 p-3 text-red-800">{error}</p>}
     </div>
   );

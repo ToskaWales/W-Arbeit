@@ -228,4 +228,21 @@ describe("/api/claude", () => {
     expect(res.status).toBe(500);
     expect((await res.json()).error).toContain("nicht erreichbar");
   });
+  it("reicht den Modus durch: Schreibmodus nutzt den Schreib-Prompt", async () => {
+    await (await call(ok({ mode: "schreiben" }))).text();
+    expect(streamSpy.mock.calls[0][0].system).toContain("[Beleg nötig");
+    await (await call(ok())).text();
+    expect(streamSpy.mock.calls[1][0].system).toContain("niemals Ghostwriter");
+  });
+  it("lehnt ungültigen Modus ab und sperrt den Schreibassistenten im Sparring (400), Sperre bleibt frei", async () => {
+    expect((await call(ok({ mode: "chaos" }))).status).toBe(400);
+    const w = { aufgabe: "Fazit", laenge: "kurz", inhalt: "Punkt" };
+    const res = await call({ code: CODE, tool: "schreibassistent", fields: w });
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toContain("Schreibmodus");
+    expect(streamSpy).not.toHaveBeenCalled();
+    const okRes = await call({ code: CODE, tool: "schreibassistent", fields: w, mode: "schreiben" });
+    expect(okRes.status).toBe(200);
+    await okRes.text();
+  });
 });

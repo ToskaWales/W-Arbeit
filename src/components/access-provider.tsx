@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ModeSwitch } from "./mode-switch";
 import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore } from "react";
 
 const KEY = "wsh_code";
@@ -107,10 +108,13 @@ export function AccessProvider({ children }: { children: React.ReactNode }) {
             <button onClick={logout} className="rounded border border-zinc-300 px-2 py-1">Abmelden</button>
           </div>
         </div>
+        <div className="mx-auto w-full max-w-2xl px-4 pb-3">
+          <ModeSwitch />
+        </div>
       </header>
       <div className="mx-auto w-full max-w-2xl flex-1 px-4 py-6">{children}</div>
       <footer className="mx-auto w-full max-w-2xl px-4 pb-6 text-xs text-zinc-500">
-        <p>Die KI kann sich irren. Prüfe Angaben nach. Sie hilft dir beim Denken und schreibt deine Arbeit nicht.</p>
+        <p>Die KI kann sich irren. Prüfe Angaben nach und gib die KI-Hilfe in deiner Arbeit an.</p>
         <LegalLinks />
       </footer>
     </Ctx.Provider>
@@ -146,7 +150,7 @@ function LoginScreen({ onLogin }: { onLogin: (code: string, restCents: number) =
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 py-10">
       <h1 className="mb-2 text-2xl font-semibold">W-Seminar-Helfer</h1>
       <p className="mb-6 text-zinc-600">
-        Dein Sparringspartner für die W-Seminararbeit: Er stellt Fragen und zeigt Schwächen auf. Schreiben musst du selbst.
+        Dein Sparringspartner und deine Schreibhilfe für die W-Seminararbeit. Im Sparring-Modus stellt die KI Fragen und zeigt Schwächen auf, im Schreibmodus formuliert sie auch aus.
       </p>
       <form onSubmit={submit} className="flex flex-col gap-3">
         <label htmlFor="code" className="font-medium">Dein Zugangscode</label>

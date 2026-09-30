@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useRef, useState } from "react";
 import { useAccess } from "@/components/access-provider";
+import { ModeNote } from "@/components/mode-note";
+import { useMode } from "@/components/mode-store";
 import { ResultView } from "@/components/result-view";
 import { useToolStream } from "@/components/use-tool-stream";
 import { PDF_MAX_BYTES, PDF_MAX_PAGES, PDF_MIN_BUDGET_CENTS, TOOLS } from "@/config/tools";
@@ -12,6 +14,7 @@ const input = "w-full rounded border border-zinc-300 bg-white px-3 py-2 text-bas
 
 export default function QuellenkritikPage() {
   const { restCents } = useAccess();
+  const [modus] = useMode();
   const { phase, answer, error, busy, run } = useToolStream();
   const [mode, setMode] = useState<"pdf" | "text">("pdf");
   const [verwendung, setVerwendung] = useState("");
@@ -54,9 +57,11 @@ export default function QuellenkritikPage() {
     <main>
       <Link href="/" className="text-sm text-zinc-600 underline">← Zurück</Link>
       <h1 className="mb-1 mt-2 text-2xl font-semibold">Quellenkritik</h1>
-      <p className="mb-5 text-zinc-600">
+      <p className="mb-4 text-zinc-600">
         Du bekommst eine kritische Einschätzung zu Autor, Interessen, Methodik, Aktualität, Schwächen und Eignung für dein Vorhaben.
+        {modus === "schreiben" && " Dazu bekommst du einen Formulierungsvorschlag für einen Absatz zur Quellenkritik."}
       </p>
+      <ModeNote />
 
       <form onSubmit={submit} className="flex flex-col gap-4">
         <p className="rounded bg-amber-50 p-3 text-sm text-amber-900">

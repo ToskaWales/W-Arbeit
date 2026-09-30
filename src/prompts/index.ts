@@ -1,11 +1,21 @@
+import type { Mode } from "../config/mode";
 import type { ToolId } from "../config/tools";
-import { FRAGESTELLUNG_PROMPT } from "./fragestellung";
-import { QUELLENKRITIK_PROMPT } from "./quellenkritik";
-import { ROTER_FADEN_PROMPT } from "./roter-faden";
+import { FRAGESTELLUNG_PROMPT, FRAGESTELLUNG_SCHREIBEN_PROMPT } from "./fragestellung";
+import { QUELLENKRITIK_PROMPT, QUELLENKRITIK_SCHREIBEN_PROMPT } from "./quellenkritik";
+import { ROTER_FADEN_PROMPT, ROTER_FADEN_SCHREIBEN_PROMPT } from "./roter-faden";
 
-// Das Kolloquium hat je nach Schwierigkeit und Phase einen eigenen Prompt (siehe kolloquium.ts).
-export const SYSTEM_PROMPTS: Record<Exclude<ToolId, "kolloquium">, string> = {
-  fragestellung: FRAGESTELLUNG_PROMPT,
-  quellenkritik: QUELLENKRITIK_PROMPT,
-  "roter-faden": ROTER_FADEN_PROMPT,
+type FixedTool = Exclude<ToolId, "kolloquium" | "schreibassistent">;
+
+// Kolloquium und Schreibassistent bauen ihren Prompt je nach Auswahl selbst (siehe kolloquium.ts, schreibassistent.ts).
+export const SYSTEM_PROMPTS: Record<Mode, Record<FixedTool, string>> = {
+  sparring: {
+    fragestellung: FRAGESTELLUNG_PROMPT,
+    quellenkritik: QUELLENKRITIK_PROMPT,
+    "roter-faden": ROTER_FADEN_PROMPT,
+  },
+  schreiben: {
+    fragestellung: FRAGESTELLUNG_SCHREIBEN_PROMPT,
+    quellenkritik: QUELLENKRITIK_SCHREIBEN_PROMPT,
+    "roter-faden": ROTER_FADEN_SCHREIBEN_PROMPT,
+  },
 };

@@ -24,7 +24,7 @@ export default function Datenschutz() {
 
       <H>2. Was der Dienst macht</H>
       <p>
-        Der W-Seminar-Helfer bietet Schülerinnen und Schülern feste Werkzeuge, mit denen sie Hilfe für ihre W-Seminararbeit von einer KI bekommen (Fragestellungs-Check, Quellenkritik, Rote-Faden-Check, Kolloquiums-Simulator). Die KI ist ein Sparringspartner und schreibt die Arbeit nicht.
+        Der W-Seminar-Helfer bietet Schülerinnen und Schülern feste Werkzeuge, mit denen sie Hilfe für ihre W-Seminararbeit von einer KI bekommen (Fragestellungs-Check, Quellenkritik, Rote-Faden-Check, Kolloquiums-Simulator). Die KI arbeitet je nach gewähltem Modus als Sparringspartner (sie fragt und kritisiert) oder als Schreibhilfe (sie formuliert auch aus). Ob und wie du KI-Hilfe in einer Schularbeit nutzen darfst und angeben musst, regelt deine Schule.
       </p>
 
       <H>3. Welche Daten wir verarbeiten</H>

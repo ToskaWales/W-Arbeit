@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useRef, useState } from "react";
+import { ModeNote } from "@/components/mode-note";
+import { useMode } from "@/components/mode-store";
 import { ResultView } from "@/components/result-view";
 import { useToolStream } from "@/components/use-tool-stream";
 import { TOOLS } from "@/config/tools";
@@ -10,6 +12,7 @@ const max = Object.fromEntries(TOOLS.fragestellung.fields.map((f) => [f.key, f.m
 const input = "min-h-12 w-full rounded border border-zinc-300 bg-white px-3 py-2 text-base";
 
 export default function FragestellungPage() {
+  const [mode] = useMode();
   const { phase, answer, error, busy, run } = useToolStream();
   const [fields, setFields] = useState({ fach: "", thema: "", fragestellung: "", zeitraum: "" });
   const resultRef = useRef<HTMLDivElement>(null);
@@ -27,9 +30,12 @@ export default function FragestellungPage() {
     <main>
       <Link href="/" className="text-sm text-zinc-600 underline">← Zurück</Link>
       <h1 className="mb-1 mt-2 text-2xl font-semibold">Fragestellungs-Check</h1>
-      <p className="mb-5 text-zinc-600">
-        Du bekommst Stärken, fünf mögliche Schwachstellen und drei Rückfragen. Eine fertige Fragestellung bekommst du nicht.
+      <p className="mb-4 text-zinc-600">
+        {mode === "schreiben"
+          ? "Du bekommst Stärken, fünf mögliche Schwachstellen und drei ausformulierte Vorschläge für eine bessere Fragestellung."
+          : "Du bekommst Stärken, fünf mögliche Schwachstellen und drei Rückfragen. Eine fertige Fragestellung bekommst du nicht."}
       </p>
+      <ModeNote />
 
       <form onSubmit={submit} className="flex flex-col gap-4">
         <p className="rounded bg-amber-50 p-3 text-sm text-amber-900">

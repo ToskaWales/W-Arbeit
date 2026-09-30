@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { FormattedText } from "@/components/formatted-text";
+import { ModeNote } from "@/components/mode-note";
+import { useMode } from "@/components/mode-store";
 import { Spinner } from "@/components/result-view";
 import { useToolStream } from "@/components/use-tool-stream";
 import { KOLLOQUIUM, TOOLS } from "@/config/tools";
@@ -22,6 +24,7 @@ const LEVELS = [
 ] as const;
 
 export default function KolloquiumPage() {
+  const [mode] = useMode();
   const { phase, answer, error, busy, run, reset } = useToolStream();
   const [stage, setStage] = useState<Stage>("setup");
   const [kurzfassung, setKurzfassung] = useState("");
@@ -101,7 +104,9 @@ export default function KolloquiumPage() {
         {header}
         <p className="mb-5 text-zinc-600">
           Die KI stellt dir wie in der Prüfung Fragen zu deiner Arbeit, eine nach der anderen. Nach höchstens {KOLLOQUIUM.maxQuestions} Fragen bekommst du ein Feedback.
+          {mode === "schreiben" && " Im Feedback bekommst du außerdem Beispielantworten."}
         </p>
+        <ModeNote />
         <form onSubmit={start} className="flex flex-col gap-4">
           <p className="rounded bg-amber-50 p-3 text-sm text-amber-900">
             Bitte schreibe keine Namen (auch nicht deinen) und keinen Schulnamen in die Kurzfassung.

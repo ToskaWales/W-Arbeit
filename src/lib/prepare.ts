@@ -1,13 +1,16 @@
 import type Anthropic from "@anthropic-ai/sdk";
+import { DEFAULT_MODE, MODES, type Mode } from "../config/mode";
 import { KOLLOQUIUM, PDF_MIN_BUDGET_CENTS, TOOLS, type ToolId } from "../config/tools";
 import type { ModelId } from "../config/models";
 import { kolloquiumPrompt, type Difficulty } from "../prompts/kolloquium";
 import { SYSTEM_PROMPTS } from "../prompts";
+import { schreibassistentPrompt } from "../prompts/schreibassistent";
 import { MICRO_PER_CENT } from "./cost";
 import { inspectPdf } from "./pdf";
 import { buildUserMessage, InputError } from "./tool-input";
 
 export interface ToolInput {
+  mode?: unknown; // "sparring" (Standard) oder "schreiben"
   fields: unknown;
   history?: unknown; // nur Kolloquium: bisheriger Gesprächsverlauf
   finish?: unknown; // nur Kolloquium: Gespräch beenden
@@ -51,9 +54,16 @@ function parseHistory(raw: unknown): Turn[] {
   return turns;
 }
 
+function parseMode(raw: unknown): Mode {
+  if (raw === undefined || raw === null || raw === "") return DEFAULT_MODE;
+  if (typeof raw === "string" && (MODES as readonly string[]).includes(raw)) return raw as Mode;
+  throw new InputError("Ungültiger Modus.");
+}
+
 export async function prepareRequest(toolId: unknown, input: ToolInput): Promise<PreparedRequest> {
   if (typeof toolId !== "string" || !Object.hasOwn(TOOLS, toolId)) throw new InputError("Unbekanntes Tool.");
   const id = toolId as ToolId;
+  const mode = parseMode(input.mode);
   const tool = TOOLS[id];
   const base = {
     model: tool.model,
@@ -76,13 +86,30 @@ export async function prepareRequest(toolId: unknown, input: ToolInput): Promise
     }
     return {
       ...base,
-      maxTokens: feedback ? KOLLOQUIUM.feedbackMaxTokens : KOLLOQUIUM.questionMaxTokens,
-      system: kolloquiumPrompt(difficulty, feedback ? "feedback" : "ask", KOLLOQUIUM.maxQuestions),
+      maxTokens: feedback
+        ? mode === "schreiben"
+          ? KOLLOQUIUM.feedbackMaxTokensSchreiben
+          : KOLLOQUIUM.feedbackMaxTokens
+        : KOLLOQUIUM.questionMaxTokens,
+      system: kolloquiumPrompt(difficulty, feedback ? "feedback" : "ask", KOLLOQUIUM.maxQuestions, mode),
       messages,
     };
   }
 
-  const system = SYSTEM_PROMPTS[id];
+  if (id === "schreibassistent") {
+    if (mode !== "schreiben") throw new InputError("Den Schreibassistenten gibt es nur im Schreibmodus.");
+    const message = buildUserMessage(tool, input.fields); // prüft Auswahlfelder und Längen
+    const f = input.fields as Record<string, string>;
+    const aufgabe = f.aufgabe.trim();
+    const hasContent = [f.inhalt, f.text].some((v) => typeof v === "string" && v.trim() !== "");
+    if (!hasContent) throw new InputError("Bitte gib Stichpunkte oder einen Text an.");
+    if (aufgabe === "Überarbeiten" && !(typeof f.text === "string" && f.text.trim())) {
+      throw new InputError("Zum Überarbeiten brauche ich deinen vorhandenen Text.");
+    }
+    return { ...base, system: schreibassistentPrompt(aufgabe, f.laenge.trim()), messages: [{ role: "user", content: message }] };
+  }
+
+  const system = SYSTEM_PROMPTS[mode][id];
 
   if (id === "quellenkritik") {
     const text = (input.fields as Record<string, unknown> | null)?.text;

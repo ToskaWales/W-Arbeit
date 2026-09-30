@@ -2,13 +2,20 @@
 
 import { useCallback, useState } from "react";
 import { useAccess } from "./access-provider";
+import { useMode } from "./mode-store";
 
 export type Phase = "idle" | "waiting" | "streaming" | "done" | "error";
+
+function withMode(form: FormData | undefined, mode: string) {
+  form?.set("mode", mode);
+  return form;
+}
 
 // Schickt eine Anfrage an /api/claude und zeigt die Antwort live an.
 // Gibt am Ende den vollständigen Text zurück (oder null, wenn etwas schiefging).
 export function useToolStream() {
   const { code, refreshBudget, logout } = useAccess();
+  const [mode] = useMode();
   const [phase, setPhase] = useState<Phase>("idle");
   const [answer, setAnswer] = useState("");
   const [error, setError] = useState("");
@@ -33,7 +40,7 @@ export function useToolStream() {
             "x-access-code": code,
             ...(payload.json ? { "Content-Type": "application/json" } : {}),
           },
-          body: payload.json ? JSON.stringify(payload.json) : payload.form,
+          body: payload.json ? JSON.stringify({ ...payload.json, mode }) : withMode(payload.form, mode),
         });
       } catch {
         setError("Keine Verbindung. Prüfe dein Internet und versuche es noch einmal.");
@@ -74,7 +81,7 @@ export function useToolStream() {
       void refreshBudget();
       return full;
     },
-    [code, refreshBudget, logout],
+    [code, refreshBudget, logout, mode],
   );
 
   return { phase, answer, error, busy: phase === "waiting" || phase === "streaming", run, reset };
