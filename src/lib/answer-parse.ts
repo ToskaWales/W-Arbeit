@@ -65,3 +65,17 @@ export function parseEmpfohleneQuellen(text: string, treffer: Treffer[]): Array<
       return { titel: p[0].slice(0, 300), autor: p[1], url, begruendung: p.slice(3).join(" | "), echt: real.has(url) };
     });
 }
+
+// Wandelt die Tabelle unter einer Überschrift in lesbaren Text um ("Kriterium: Einschätzung" pro Zeile),
+// zum Beispiel für die gespeicherte Bewertung einer Quelle. Die Kopfzeile fällt weg.
+export function tabellenText(text: string, heading: string): string {
+  const rows = section(text, heading)
+    .split("\n")
+    .filter((l) => l.trim().startsWith("|"))
+    .map((l) => l.trim().replace(/^\||\|$/g, "").split("|").map((c) => c.trim()))
+    .filter((cells) => !cells.every((c) => /^:?-{2,}:?$/.test(c)));
+  return rows
+    .slice(1)
+    .map((cells) => `${cells[0]}: ${cells.slice(1).join(" – ")}`)
+    .join("\n");
+}

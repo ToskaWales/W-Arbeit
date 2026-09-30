@@ -2,7 +2,9 @@
 
 import { useCallback, useState } from "react";
 import { useAccess } from "./access-provider";
+import { splitMeta, type Treffer } from "@/lib/meta";
 import { useMode } from "./mode-store";
+import { useWork } from "./work-provider";
 
 export type Phase = "idle" | "waiting" | "streaming" | "done" | "error";
 
@@ -16,21 +18,27 @@ function withMode(form: FormData | undefined, mode: string) {
 export function useToolStream() {
   const { code, refreshBudget, logout } = useAccess();
   const [mode] = useMode();
+  const { saveNow } = useWork();
   const [phase, setPhase] = useState<Phase>("idle");
   const [answer, setAnswer] = useState("");
   const [error, setError] = useState("");
+  const [treffer, setTreffer] = useState<Treffer[]>([]);
 
   const reset = useCallback(() => {
     setPhase("idle");
     setAnswer("");
     setError("");
+    setTreffer([]);
   }, []);
 
   const run = useCallback(
     async (payload: { json?: object; form?: FormData }): Promise<string | null> => {
       setError("");
       setAnswer("");
+      setTreffer([]);
       setPhase("waiting");
+      // Die Tools lesen die Arbeit auf dem Server: zuerst alles Ungespeicherte sichern.
+      await saveNow();
 
       let res: Response;
       try {
@@ -69,7 +77,9 @@ export function useToolStream() {
           if (done) break;
           setPhase("streaming");
           full += decoder.decode(value, { stream: true });
-          setAnswer(full);
+          const shown = splitMeta(full);
+          setAnswer(shown.text);
+          setTreffer(shown.treffer);
         }
       } catch {
         setError("Die Verbindung wurde unterbrochen. Die Antwort ist unvollständig.");
@@ -79,10 +89,10 @@ export function useToolStream() {
       }
       setPhase("done");
       void refreshBudget();
-      return full;
+      return splitMeta(full).text;
     },
-    [code, refreshBudget, logout, mode],
+    [code, refreshBudget, logout, mode, saveNow],
   );
 
-  return { phase, answer, error, busy: phase === "waiting" || phase === "streaming", run, reset };
+  return { phase, answer, error, treffer, busy: phase === "waiting" || phase === "streaming", run, reset };
 }

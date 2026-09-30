@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  bulletItems, numberedItems, parseEmpfohleneQuellen, parseEntwurf, parseFragestellungVorschlaege,
+  bulletItems, numberedItems, tabellenText, parseEmpfohleneQuellen, parseEntwurf, parseFragestellungVorschlaege,
   parseGliederungVorschlag, parseLuecken, parseNachbesserungen, section, stripGliederungNotes,
 } from "../src/lib/answer-parse";
 import { computeRoadmap, nextStep } from "../src/lib/roadmap";
@@ -55,6 +55,18 @@ Text`;
     expect(q[0]).toMatchObject({ titel: "bpb Aufsatz", url: "https://www.bpb.de/x", echt: true });
     expect(q[0].begruendung).toContain("Nur Deutung");
     expect(q[1]).toMatchObject({ url: "https://erfunden.de/buch", echt: false });
+  });
+});
+
+describe("Tabellen", () => {
+  it("macht aus der Tabelle lesbaren Text ohne Kopfzeile", () => {
+    const t = "## Einschätzung\n| Kriterium | Einschätzung |\n|---|---|\n| Autor | Kein Autor erkennbar. |\n| Aktualität | Von 2012. |\n\n## Weiter\ntext";
+    expect(tabellenText(t, "Einschätzung")).toBe("Autor: Kein Autor erkennbar.\nAktualität: Von 2012.");
+    expect(tabellenText("nichts", "Einschätzung")).toBe("");
+  });
+  it("kommt mit drei Spalten zurecht", () => {
+    const t = "## Checkliste\n| Prüfpunkt | Urteil | Begründung |\n|---|---|---|\n| Roter Faden | teilweise | Sprung in Kap. 3 |";
+    expect(tabellenText(t, "Checkliste")).toBe("Roter Faden: teilweise – Sprung in Kap. 3");
   });
 });
 

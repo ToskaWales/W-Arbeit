@@ -6,7 +6,11 @@ import { FormattedText } from "@/components/formatted-text";
 import { ModeNote } from "@/components/mode-note";
 import { useMode } from "@/components/mode-store";
 import { Spinner } from "@/components/result-view";
+import { ApplyButton } from "@/components/apply-button";
 import { useToolStream } from "@/components/use-tool-stream";
+import { newId, useWork } from "@/components/work-provider";
+import { WORK_LIMITS } from "@/config/work";
+import { parseLuecken } from "@/lib/answer-parse";
 import { KOLLOQUIUM, TOOLS } from "@/config/tools";
 
 interface Turn {
@@ -24,10 +28,19 @@ const LEVELS = [
 ] as const;
 
 export default function KolloquiumPage() {
+  const { work, loaded } = useWork();
+  if (!loaded) return <main className="text-zinc-600">Lade deine Seminararbeit …</main>;
+  return <Kolloquium initialKurzfassung={work.kurzfassung} />;
+}
+
+function Kolloquium({ initialKurzfassung }: { initialKurzfassung: string }) {
+  const { work, update } = useWork();
   const [mode] = useMode();
   const { phase, answer, error, busy, run, reset } = useToolStream();
   const [stage, setStage] = useState<Stage>("setup");
-  const [kurzfassung, setKurzfassung] = useState("");
+  const [kurzfassung, setKurzfassung] = useState(initialKurzfassung);
+  const [kurzGespeichert, setKurzGespeichert] = useState(false);
+  const hatStruktur = !!(work.fragestellung.trim() && work.gliederung.trim());
   const [schwierigkeit, setSchwierigkeit] = useState<(typeof LEVELS)[number]["value"]>("normal");
   const [turns, setTurns] = useState<Turn[]>([]);
   const [reply, setReply] = useState("");
@@ -64,6 +77,7 @@ export default function KolloquiumPage() {
       setTurns(history);
       setFeedback(result.trim());
       setStage("done");
+      update((w) => ({ ...w, meilensteine: { ...w.meilensteine, kolloquium: Date.now() } }));
     } else {
       setTurns([...history, { role: "assistant", content: result.trim() }]);
     }
@@ -80,6 +94,7 @@ export default function KolloquiumPage() {
     setReply("");
     setFeedback(result.trim());
     setStage("done");
+    update((w) => ({ ...w, meilensteine: { ...w.meilensteine, kolloquium: Date.now() } }));
     reset();
   }
 
@@ -119,10 +134,18 @@ export default function KolloquiumPage() {
               onChange={(e) => setKurzfassung(e.target.value)}
               maxLength={max.kurzfassung}
               placeholder="Worum geht es? Was ist deine Fragestellung, wie bist du vorgegangen und zu welchem Ergebnis kommst du?"
-              required
+              required={!hatStruktur}
+              onInput={() => setKurzGespeichert(false)}
             />
             <span className="text-xs text-zinc-500">{kurzfassung.length} / {max.kurzfassung} Zeichen</span>
           </label>
+          <p className="rounded bg-blue-50 p-3 text-sm text-blue-950">
+            Die KI kennt auch Fragestellung, Gliederung und Quellenliste aus deiner Seminararbeit und fragt gezielt danach.
+            {!hatStruktur && " Sie sind noch nicht vollständig gespeichert, deshalb brauchst du hier eine Kurzfassung."}
+          </p>
+          <button type="button" disabled={!kurzfassung.trim()} onClick={() => { update((w) => ({ ...w, kurzfassung: kurzfassung.trim() })); setKurzGespeichert(true); }} className="min-h-10 rounded border border-zinc-400 px-3 text-sm disabled:opacity-50">
+            {kurzGespeichert ? "✓ Kurzfassung gespeichert" : "Kurzfassung in meiner Seminararbeit speichern"}
+          </button>
           <fieldset className="flex flex-col gap-2">
             <legend className="mb-1 font-medium">Schwierigkeitsgrad</legend>
             {LEVELS.map((l) => (
@@ -200,6 +223,25 @@ export default function KolloquiumPage() {
             <FormattedText text={feedback} />
           </section>
           <p className="mt-3 text-sm text-zinc-500">Die KI kann sich irren. Nimm die Tipps als Anregung und übe in eigenen Worten.</p>
+          {parseLuecken(feedback).length > 0 && (
+            <section className="mt-4 flex flex-col gap-2 rounded-lg border border-blue-200 bg-blue-50 p-4" aria-label="Lücken übernehmen">
+              <h2 className="font-semibold">{parseLuecken(feedback).length} Lücken als offene Punkte übernehmen</h2>
+              <ApplyButton
+                label="Als offene Punkte speichern"
+                onApply={() =>
+                  update((w) => {
+                    const vorhanden = new Set(w.punkte.map((p) => p.text.trim().toLowerCase()));
+                    const neu = parseLuecken(feedback)
+                      .map((t) => t.replace(/\s+/g, " ").trim().slice(0, WORK_LIMITS.punktText))
+                      .filter((t) => t && !vorhanden.has(t.toLowerCase()))
+                      .map((text) => ({ id: newId(), text, herkunft: "kolloquium" as const, erledigt: false }));
+                    return { ...w, punkte: [...w.punkte, ...neu].slice(0, WORK_LIMITS.maxPunkte) };
+                  })
+                }
+              />
+              <p className="text-xs text-zinc-600">Damit verbesserst du danach im Schreibassistenten gezielt die Stellen, an denen es noch fehlt.</p>
+            </section>
+          )}
           <button onClick={restart} className="mt-4 min-h-12 w-full rounded bg-zinc-900 px-4 text-base text-white">Neues Gespräch</button>
         </>
       )}
