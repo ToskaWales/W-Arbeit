@@ -1,8 +1,9 @@
-import type { CodeRecord, CodeStore } from "./types";
+import type { CodePatch, CodeRecord, CodeStore } from "./types";
 
 export class MemoryStore implements CodeStore {
   private records = new Map<string, CodeRecord>();
   private daily = new Map<string, number>();
+  private counters = new Map<string, number>();
 
   async create(hash: string, record: CodeRecord) {
     this.records.set(hash, { ...record });
@@ -10,6 +11,17 @@ export class MemoryStore implements CodeStore {
   async get(hash: string) {
     const r = this.records.get(hash);
     return r ? { ...r } : null;
+  }
+  async list() {
+    return [...this.records].map(([hash, r]) => ({ hash, record: { ...r } }));
+  }
+  async update(hash: string, patch: CodePatch) {
+    const r = this.records.get(hash);
+    if (!r) return null;
+    if (patch.name !== undefined) r.name = patch.name;
+    if (patch.active !== undefined) r.active = patch.active;
+    if (patch.addBudgetMicro) r.budgetMicro += patch.addBudgetMicro;
+    return { ...r };
   }
   async addUsage(hash: string, costMicro: number, now: number) {
     const r = this.records.get(hash);
@@ -22,6 +34,11 @@ export class MemoryStore implements CodeStore {
     const key = `${hash}:${dayKey}`;
     const n = (this.daily.get(key) ?? 0) + 1;
     this.daily.set(key, n);
+    return n;
+  }
+  async bumpCounter(key: string) {
+    const n = (this.counters.get(key) ?? 0) + 1;
+    this.counters.set(key, n);
     return n;
   }
 }
