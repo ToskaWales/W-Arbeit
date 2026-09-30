@@ -1,6 +1,6 @@
 import type { ModelId } from "./models";
 
-export type ToolId = "fragestellung" | "quellenkritik" | "roter-faden" | "kolloquium" | "schreibassistent";
+export type ToolId = "fragestellung" | "quellenkritik" | "roter-faden" | "kolloquium" | "schreibassistent" | "abschluss" | "quellensuche";
 
 export interface ToolField {
   key: string;
@@ -8,6 +8,7 @@ export interface ToolField {
   maxChars: number;
   required: boolean;
   options?: string[]; // erlaubte Werte (Auswahlfeld)
+  hidden?: boolean; // wird geprüft, aber nicht an die KI geschickt (Steuerfeld)
 }
 
 export interface ToolConfig {
@@ -16,6 +17,10 @@ export interface ToolConfig {
   effort?: "low" | "medium" | "high";
   // Günstigeres Modell für kurze Zwischenschritte (nur Kolloquium-Fragen; Haiku kennt kein effort).
   askModel?: ModelId;
+  // Braucht die gespeicherte Seminararbeit als Kontext (der Server lädt sie selbst, der Browser schickt sie nicht mit).
+  usesWork?: boolean;
+  // Websuche (Server-Werkzeug von Anthropic), Höchstzahl Suchen pro Anfrage.
+  webSearchMaxUses?: number;
   fields: ToolField[];
   // Mindest-Restbudget in US-Cent, damit eine einzelne Anfrage das Budget nicht weit überzieht.
   minBudgetCents: number;
@@ -40,6 +45,7 @@ export const TOOLS: Record<ToolId, ToolConfig> = {
     maxTokens: 2500,
     effort: "low",
     minBudgetCents: 3,
+    usesWork: true,
     fields: [
       { key: "verwendung", label: "Verwendungszweck", maxChars: 400, required: true },
       { key: "text", label: "Quellentext", maxChars: 20000, required: false },
@@ -50,9 +56,11 @@ export const TOOLS: Record<ToolId, ToolConfig> = {
     maxTokens: 2500,
     effort: "low",
     minBudgetCents: 3,
+    usesWork: true,
     fields: [
       { key: "fragestellung", label: "Fragestellung", maxChars: 600, required: true },
       { key: "gliederung", label: "Gliederung", maxChars: 4000, required: true },
+      { key: "mitTexten", label: "Geschriebene Kapitel prüfen", maxChars: 4, required: false, options: ["ja", "nein"], hidden: true },
     ],
   },
   kolloquium: {
@@ -61,8 +69,9 @@ export const TOOLS: Record<ToolId, ToolConfig> = {
     effort: "low",
     askModel: "claude-haiku-4-5-20251001", // Feedback bleibt bei Sonnet (Haiku hielt sich dort nicht an die Aufgabe)
     minBudgetCents: 5,
+    usesWork: true,
     fields: [
-      { key: "kurzfassung", label: "Kurzfassung deiner Arbeit", maxChars: 3000, required: true },
+      { key: "kurzfassung", label: "Kurzfassung deiner Arbeit", maxChars: 3000, required: false },
       { key: "schwierigkeit", label: "Schwierigkeitsgrad", maxChars: 20, required: true, options: ["freundlich", "normal", "streng"] },
     ],
   },
@@ -72,12 +81,36 @@ export const TOOLS: Record<ToolId, ToolConfig> = {
     maxTokens: 3000,
     effort: "low",
     minBudgetCents: 5,
+    usesWork: true,
     fields: [
       { key: "aufgabe", label: "Aufgabe", maxChars: 20, required: true, options: ["Einleitung", "Abschnitt", "Überleitung", "Fazit", "Überarbeiten"] },
       { key: "laenge", label: "Länge", maxChars: 10, required: true, options: ["kurz", "mittel", "lang"] },
       { key: "fragestellung", label: "Fragestellung der Arbeit", maxChars: 600, required: false },
       { key: "inhalt", label: "Stichpunkte / Inhalt", maxChars: 4000, required: false },
       { key: "text", label: "Vorhandener Text", maxChars: 6000, required: false },
+      { key: "kapitelId", label: "Kapitel", maxChars: 40, required: false, hidden: true },
+    ],
+  },
+  // Liest die ganze gespeicherte Arbeit und listet Stellen zum Nachbessern.
+  abschluss: {
+    model: "claude-sonnet-5-5",
+    maxTokens: 3000,
+    effort: "low",
+    minBudgetCents: 15,
+    usesWork: true,
+    fields: [{ key: "fokus", label: "Schwerpunkt", maxChars: 30, required: false, options: ["alles", "Fragestellung", "Roter Faden", "Quellen", "Sprache und Form"] }],
+  },
+  // Sucht im Internet nach besseren Quellen (Websuche kostet extra, deshalb hohes Mindestbudget).
+  quellensuche: {
+    model: "claude-sonnet-5-5",
+    maxTokens: 2500,
+    effort: "low",
+    minBudgetCents: 15,
+    usesWork: true,
+    webSearchMaxUses: 2,
+    fields: [
+      { key: "suchauftrag", label: "Wofür brauchst du bessere Quellen?", maxChars: 500, required: true },
+      { key: "schwacheQuelle", label: "Bisherige Quelle und ihre Schwäche", maxChars: 600, required: false },
     ],
   },
 };

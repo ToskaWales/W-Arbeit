@@ -12,7 +12,8 @@ Eine Tabelle mit genau zwei Spalten und diesen sechs Zeilen. Jede Zeile beginnt 
 | Eignung für dein Vorhaben | ... |
 Halte jede Zelle kurz (höchstens zwei Sätze). Verwende in Zellen keine senkrechten Striche.`;
 
-const REGELN = `- Stütze dich nur auf das, was in der Quelle steht. Wenn Angaben fehlen (zum Beispiel kein Autor erkennbar), schreibe "nicht erkennbar" und erfinde nichts.
+const REGELN = `- Ist die Fragestellung der Arbeit angegeben, beurteile die Eignung für genau diese Fragestellung.
+- Stütze dich nur auf das, was in der Quelle steht. Wenn Angaben fehlen (zum Beispiel kein Autor erkennbar), schreibe "nicht erkennbar" und erfinde nichts.
 - Erfinde keine Hintergrundinformationen über Autoren oder Verlage. Sage offen, wenn du etwas nicht weißt.
 - Verwende kein Markdown außer den "## "-Überschriften, der Tabelle und Stichpunkten mit "- ".
 - Ist die Quelle nicht lesbar oder leer, sag das kurz.`;

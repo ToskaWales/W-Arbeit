@@ -6,7 +6,7 @@ export class InputError extends Error {}
 const clean = (s: string) => s.replace(/</g, "‹").replace(/>/g, "›").trim();
 
 // Baut die Nachricht an die KI. Alles, was der Nutzer schreibt, steht als Daten im Rahmen <nutzereingabe>.
-export function buildUserMessage(tool: ToolConfig, fields: unknown): string {
+export function buildUserMessage(tool: ToolConfig, fields: unknown, extraLines: string[] = []): string {
   if (typeof fields !== "object" || fields === null || Array.isArray(fields)) {
     throw new InputError("Bitte fülle das Formular aus.");
   }
@@ -22,7 +22,14 @@ export function buildUserMessage(tool: ToolConfig, fields: unknown): string {
     if (value.length > f.maxChars) {
       throw new InputError(`„${f.label}“ ist zu lang (maximal ${f.maxChars} Zeichen).`);
     }
-    if (value) parts.push(`${f.label}: ${value}`);
+    if (value && !f.hidden) parts.push(`${f.label}: ${value}`);
   }
-  return `<nutzereingabe>\n${parts.join("\n")}\n</nutzereingabe>`;
+  return frame([...parts, ...extraLines]);
 }
+
+// Packt Zeilen in den Daten-Rahmen. Zeilen müssen vorher mit clean() bereinigt sein.
+export function frame(lines: string[]): string {
+  return `<nutzereingabe>\n${lines.join("\n")}\n</nutzereingabe>`;
+}
+
+export { clean };

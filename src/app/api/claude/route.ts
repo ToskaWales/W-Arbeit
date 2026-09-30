@@ -5,7 +5,10 @@ import { prepareRequest, type ToolInput } from "@/lib/prepare";
 import { BLOCKED_MESSAGE, BUSY_MESSAGE, UNAVAILABLE_MESSAGE, clientKey, isBlocked, recordFailure } from "@/lib/rate-limit";
 import { getStore } from "@/lib/store";
 import { InputError } from "@/lib/tool-input";
-import { DAILY_REQUEST_LIMIT, PDF_MAX_BYTES } from "@/config/tools";
+import { META_MARKER, searchHits } from "@/lib/meta";
+import { loadWork } from "@/lib/work-store";
+import type { Work } from "@/lib/work";
+import { DAILY_REQUEST_LIMIT, PDF_MAX_BYTES, TOOLS, type ToolId } from "@/config/tools";
 
 export const maxDuration = 60;
 
@@ -84,7 +87,22 @@ async function run(
   let prepared;
   try {
     const { tool, input } = await readBody(request);
-    prepared = await prepareRequest(tool, input);
+    // Die gespeicherte Arbeit lädt der Server selbst (der Browser schickt sie nicht mit und kann sie nicht fälschen).
+    let work: Work | null = null;
+    let workFailed = false;
+    if (typeof tool === "string" && Object.hasOwn(TOOLS, tool) && TOOLS[tool as ToolId].usesWork) {
+      try {
+        work = await loadWork(store, access.hash);
+      } catch (err) {
+        workFailed = true;
+        console.error("Seminararbeit konnte nicht geladen werden:", err instanceof Error ? err.message : err);
+      }
+    }
+    if (workFailed && tool === "abschluss") {
+      await unlock();
+      return json(503, "Deine Seminararbeit kann gerade nicht geladen werden. Bitte versuche es später noch einmal.");
+    }
+    prepared = await prepareRequest(tool, { ...input, work });
   } catch (err) {
     await unlock();
     if (err instanceof InputError) return json(400, err.message);
@@ -103,6 +121,18 @@ async function run(
     system: prepared.system,
     ...(prepared.effort ? { output_config: { effort: prepared.effort } } : {}),
     messages: prepared.messages,
+    ...(prepared.webSearchMaxUses
+      ? {
+          tools: [
+            {
+              type: "web_search_20250305" as const,
+              name: "web_search" as const,
+              max_uses: prepared.webSearchMaxUses,
+              user_location: { type: "approximate" as const, country: "DE", timezone: "Europe/Berlin" },
+            },
+          ],
+        }
+      : {}),
   });
 
   const encoder = new TextEncoder();
@@ -145,6 +175,9 @@ async function run(
         await unlock();
       }
       if (final.stop_reason === "max_tokens") send("\n\n[Die Antwort wurde wegen des Längenlimits gekürzt.]");
+      if (final.stop_reason === "pause_turn") send("\n\n[Die Suche wurde unterbrochen. Bitte versuche es noch einmal.]");
+      if (final.stop_reason === "refusal") send("\n\n[Die KI konnte diese Anfrage nicht beantworten. Formuliere sie anders oder wähle einen anderen Ausschnitt.]");
+      if (prepared.webSearchMaxUses) send(META_MARKER + JSON.stringify({ quellen: searchHits(final.content) }));
       if (open) controller.close();
     })
     .catch(async (err) => {

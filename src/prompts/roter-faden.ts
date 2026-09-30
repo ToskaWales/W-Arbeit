@@ -1,6 +1,6 @@
 import { GUARDRAILS, GUARDRAILS_SCHREIBEN } from "./guardrails";
 
-const ANALYSE = `Fasse dich kurz: Jeder Punkt höchstens zwei Sätze, pro Abschnitt höchstens drei Punkte.
+const ANALYSE = `Fasse dich kurz: Jeder Punkt höchstens zwei Sätze, pro Abschnitt höchstens drei Punkte. Sind Auszüge aus geschriebenen Kapiteln angegeben, prüfe auch, ob sie zur Gliederung und zur Fragestellung passen.
 
 ## Argumentationssprünge
 Stellen, an denen der Gedankengang von einem Kapitel zum nächsten nicht nachvollziehbar ist. Nenne die Kapitel beim Namen und erkläre kurz, was fehlt.

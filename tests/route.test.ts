@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createAccessCode } from "../src/lib/access";
+import { randomBytes } from "node:crypto";
 import { hashCode } from "../src/lib/codes";
+import { getEncryptionKey } from "../src/lib/crypto";
+import { META_MARKER } from "../src/lib/meta";
+import { sanitizeWork } from "../src/lib/work";
+import { saveWork } from "../src/lib/work-store";
 import { MemoryStore } from "../src/lib/store/memory";
 
 const CODE = "ABCD2345EFGH";
@@ -8,6 +13,7 @@ let store: MemoryStore;
 const streamSpy = vi.fn();
 let mode: "ok" | "error" | "max_tokens" = "ok";
 let gate: Promise<void> | null = null;
+let finalExtra: { content?: unknown[]; usage?: Record<string, unknown> } = {};
 
 vi.mock("@/lib/store", () => ({ getStore: () => store }));
 vi.mock("@/lib/anthropic", () => ({
@@ -31,7 +37,8 @@ vi.mock("@/lib/anthropic", () => ({
             emit("text", "Die Verbindung funktioniert.");
             emit("end");
             return {
-              usage: { input_tokens: 1000, output_tokens: 500 },
+              usage: { input_tokens: 1000, output_tokens: 500, ...finalExtra.usage },
+              content: finalExtra.content ?? [],
               stop_reason: mode === "max_tokens" ? "max_tokens" : "end_turn",
             };
           },
@@ -62,6 +69,7 @@ beforeEach(async () => {
   store = new MemoryStore();
   mode = "ok";
   gate = null;
+  finalExtra = {};
   streamSpy.mockClear();
   vi.spyOn(console, "error").mockImplementation(() => {});
   await createAccessCode(store, CODE, "Lisa M.", 100 * 1_000_000);
@@ -244,5 +252,88 @@ describe("/api/claude", () => {
     const okRes = await call({ code: CODE, tool: "schreibassistent", fields: w, mode: "schreiben" });
     expect(okRes.status).toBe(200);
     await okRes.text();
+  });
+});
+
+describe("/api/claude mit gespeicherter Arbeit und Websuche", () => {
+  const KEY = randomBytes(32).toString("base64");
+  const CODE2 = "ZZZZ2345EFGH";
+  const kapitelText = "Die Hyperinflation traf die Sparer. ".repeat(10);
+  beforeEach(() => {
+    vi.stubEnv("WORK_ENCRYPTION_KEY", KEY);
+  });
+  const saveMine = (over: object) => saveWork(store, hashCode(CODE), sanitizeWork(over), 0, getEncryptionKey(KEY));
+  const QUELLE = { verwendung: "Beleg", text: "Ein Artikel." };
+
+  it("lädt die gespeicherte Arbeit selbst und gibt sie als Kontext mit", async () => {
+    await saveMine({ fragestellung: "Wie stark traf die Inflation die Sparer?" });
+    await (await call({ code: CODE, tool: "quellenkritik", fields: QUELLE })).text();
+    expect(streamSpy.mock.calls[0][0].messages[0].content).toContain("Fragestellung der Arbeit: Wie stark traf die Inflation die Sparer?");
+  });
+  it("ignoriert eine vom Browser mitgeschickte Arbeit", async () => {
+    await saveMine({ fragestellung: "Echte Fragestellung" });
+    await (await call({ code: CODE, tool: "quellenkritik", fields: QUELLE, work: { fragestellung: "GEFÄLSCHT" } })).text();
+    const content = streamSpy.mock.calls[0][0].messages[0].content;
+    expect(content).toContain("Echte Fragestellung");
+    expect(content).not.toContain("GEFÄLSCHT");
+  });
+  it("Tools ohne Arbeitsbezug laden nichts, die Arbeit anderer Codes bleibt unsichtbar", async () => {
+    await createAccessCode(store, CODE2, "Max", 1e6);
+    await saveWork(store, hashCode(CODE2), sanitizeWork({ fragestellung: "Geheim von Max" }), 0, getEncryptionKey(KEY));
+    await (await call({ code: CODE, tool: "quellenkritik", fields: QUELLE })).text();
+    expect(streamSpy.mock.calls[0][0].messages[0].content).not.toContain("Geheim von Max");
+  });
+  it("Abschluss-Check verlangt eine geschriebene Arbeit (400) und liest sie dann komplett", async () => {
+    const res = await call({ code: CODE, tool: "abschluss", fields: {} });
+    expect(res.status).toBe(400);
+    expect(streamSpy).not.toHaveBeenCalled();
+    await saveMine({ fragestellung: "F?", kapitel: [{ id: "k1", titel: "Einleitung", text: kapitelText }] });
+    const ok2 = await call({ code: CODE, tool: "abschluss", fields: {} });
+    expect(ok2.status).toBe(200);
+    await ok2.text();
+    expect(streamSpy.mock.calls[0][0].messages[0].content).toContain("Die Hyperinflation traf die Sparer.");
+  });
+  it("Websuche: Werkzeug wird mitgegeben, echte Treffer kommen als Zusatzteil, Suchkosten werden gebucht", async () => {
+    finalExtra = {
+      usage: { server_tool_use: { web_search_requests: 2 } },
+      content: [
+        {
+          type: "web_search_tool_result",
+          tool_use_id: "s1",
+          content: [
+            { type: "web_search_result", url: "https://www.bpb.de/x", title: "bpb Weimar", page_age: "2023", encrypted_content: "" },
+            { type: "web_search_result", url: "javascript:alert(1)", title: "böse", page_age: null, encrypted_content: "" },
+          ],
+        },
+      ],
+    };
+    const res = await call({ code: CODE, tool: "quellensuche", fields: { suchauftrag: "Belege zur Inflation" } });
+    expect(res.status).toBe(200);
+    const text = await res.text();
+    expect(text).toContain(META_MARKER);
+    const meta = JSON.parse(text.split(META_MARKER)[1]);
+    expect(meta.quellen).toEqual([{ titel: "bpb Weimar", url: "https://www.bpb.de/x", alter: "2023" }]);
+    const tools = streamSpy.mock.calls[0][0].tools;
+    expect(tools).toHaveLength(1);
+    expect(tools[0]).toMatchObject({ type: "web_search_20250305", name: "web_search", max_uses: 2 });
+    // 1000 Input à 200 + 500 Output à 1000 + 2 Suchen à 1 Cent
+    await vi.waitFor(async () => expect((await store.get(hashCode(CODE)))!.costMicro).toBe(2_700_000));
+  });
+  it("Websuche verlangt 15 Cent Restbudget; andere Tools bekommen kein Suchwerkzeug", async () => {
+    await store.addUsage(hashCode(CODE), 90 * 1_000_000, 1); // 10 Cent übrig
+    const res = await call({ code: CODE, tool: "quellensuche", fields: { suchauftrag: "x" } });
+    expect(res.status).toBe(402);
+    expect(streamSpy).not.toHaveBeenCalled();
+    await (await call(ok())).text();
+    expect(streamSpy.mock.calls[0][0].tools).toBeUndefined();
+  });
+  it("ohne Schlüssel laufen die Tools weiter (ohne Kontext), nur der Abschluss-Check meldet 503", async () => {
+    vi.stubEnv("WORK_ENCRYPTION_KEY", "");
+    const res = await call({ code: CODE, tool: "quellenkritik", fields: QUELLE });
+    expect(res.status).toBe(200);
+    await res.text();
+    const abschluss = await call({ code: CODE, tool: "abschluss", fields: {} });
+    expect(abschluss.status).toBe(503);
+    await vi.waitFor(async () => expect((await call(ok())).status).toBe(200)); // Sperre wurde freigegeben
   });
 });

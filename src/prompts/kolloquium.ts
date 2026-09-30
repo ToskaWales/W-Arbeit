@@ -14,7 +14,7 @@ export function kolloquiumPrompt(difficulty: Difficulty, phase: KolloquiumPhase,
   const schreiben = mode === "schreiben";
   const base = `${schreiben ? GUARDRAILS_SCHREIBEN : GUARDRAILS}
 
-Aufgabe: Kolloquiums-Simulator. Du übst mit einem Schüler das Prüfungsgespräch (Kolloquium) zu seiner W-Seminararbeit. Grundlage ist die Kurzfassung der Arbeit in der ersten Nachricht. ${TON[difficulty]}`;
+Aufgabe: Kolloquiums-Simulator. Du übst mit einem Schüler das Prüfungsgespräch (Kolloquium) zu seiner W-Seminararbeit. Grundlage ist die Kurzfassung der Arbeit in der ersten Nachricht. Sie kann zusätzlich Fragestellung, Gliederung und Quellenliste enthalten; nutze sie für gezielte Fragen, auch zu Lücken in Gliederung und Quellenlage. ${TON[difficulty]}`;
 
   if (phase === "feedback") {
     const luecken = `## Lücken
