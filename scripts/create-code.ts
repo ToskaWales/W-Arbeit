@@ -5,7 +5,14 @@ import { generateCode } from "../src/lib/codes";
 import { MICRO_PER_CENT } from "../src/lib/cost";
 import { getStore } from "../src/lib/store";
 
-const [name, cents] = process.argv.slice(2);
-const code = generateCode();
-await createAccessCode(getStore(), code, name, Number(cents) * MICRO_PER_CENT);
-console.log(`Code für ${name}: ${code}\nBudget: ${cents} Cent. Der Code wird nur jetzt einmal angezeigt.`);
+async function main() {
+  const [name, cents] = process.argv.slice(2);
+  const code = generateCode();
+  await createAccessCode(getStore(), code, name, Number(cents) * MICRO_PER_CENT);
+  console.log(`Code für ${name}: ${code}\nBudget: ${cents} Cent. Der Code wird nur jetzt einmal angezeigt.`);
+}
+
+main().catch((err) => {
+  console.error(err instanceof Error ? err.message : err);
+  process.exit(1);
+});
