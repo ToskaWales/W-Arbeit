@@ -53,4 +53,14 @@ export class MemoryStore implements CodeStore {
   async unlock(key: string) {
     this.locks.delete(key);
   }
+  blobs = new Map<string, string>();
+  async getBlob(key: string) {
+    return this.blobs.get(key) ?? null;
+  }
+  async setBlob(key: string, value: string) {
+    this.blobs.set(key, value);
+  }
+  async deleteBlob(key: string) {
+    this.blobs.delete(key);
+  }
 }

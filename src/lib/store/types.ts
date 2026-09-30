@@ -29,4 +29,8 @@ export interface CodeStore {
   // Sperre gegen parallele Anfragen desselben Codes. true = Sperre erhalten.
   tryLock(key: string, ttlSeconds: number): Promise<boolean>;
   unlock(key: string): Promise<void>;
+  // Verschlüsselte Datenblöcke (die Seminararbeit). Ablaufzeit wird bei jedem Schreiben erneuert.
+  getBlob(key: string): Promise<string | null>;
+  setBlob(key: string, value: string, ttlSeconds: number): Promise<void>;
+  deleteBlob(key: string): Promise<void>;
 }

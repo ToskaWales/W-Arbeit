@@ -19,15 +19,16 @@ const routes = files.filter((f) => f.endsWith("/route.ts") && rel(f).startsWith(
 
 describe("Checkliste: Jede Route prüft den Zugang", () => {
   // Neue Routen müssen hier bewusst eingeordnet werden.
-  const NUTZER = ["app/api/claude/route.ts", "app/api/session/route.ts"]; // prüfen den Zugangscode
-  const ADMIN = ["app/api/admin/codes/route.ts", "app/api/admin/codes/[hash]/route.ts"]; // prüfen den Admin-Login
+  const NUTZER = ["app/api/claude/route.ts", "app/api/session/route.ts", "app/api/work/route.ts"]; // prüfen den Zugangscode
+  const ADMIN = ["app/api/admin/codes/route.ts", "app/api/admin/codes/[hash]/route.ts", "app/api/admin/codes/[hash]/work/route.ts"]; // prüfen den Admin-Login
   const OFFEN = ["app/api/admin/login/route.ts", "app/api/admin/logout/route.ts"]; // Login prüft das Passwort, Logout löscht nur das Cookie
 
   it("kennt alle API-Routen", () => {
     expect(routes.map(rel).sort()).toEqual([...NUTZER, ...ADMIN, ...OFFEN].sort());
   });
   it("Nutzer-Routen prüfen den Zugangscode", () => {
-    for (const r of NUTZER) expect(read(path.join(SRC, r))).toMatch(/checkAccess\(|lookupCode\(/);
+    for (const r of NUTZER) expect(read(path.join(SRC, r))).toMatch(/checkAccess\(|lookupCode\(|authenticateUser\(/);
+    expect(read(path.join(SRC, "lib/user-auth.ts"))).toContain("lookupCode(");
   });
   it("jeder Admin-Endpunkt ruft requireAdmin auf, bevor er etwas tut", () => {
     for (const r of ADMIN) {

@@ -83,6 +83,18 @@ export class RedisStore implements CodeStore {
     await this.redis.del(`lock:${key}`);
   }
 
+  async getBlob(key: string) {
+    return (await this.redis.get<string>(key)) ?? null;
+  }
+
+  async setBlob(key: string, value: string, ttlSeconds: number) {
+    await this.redis.set(key, value, { ex: ttlSeconds });
+  }
+
+  async deleteBlob(key: string) {
+    await this.redis.del(key);
+  }
+
   async bumpCounter(key: string, ttlSeconds: number) {
     const n = await this.redis.incr(key);
     if (n === 1) await this.redis.expire(key, ttlSeconds);
