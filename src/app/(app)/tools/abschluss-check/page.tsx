@@ -10,8 +10,8 @@ import { ResultView } from "@/components/result-view";
 import { useToolStream } from "@/components/use-tool-stream";
 import { newId, useWork } from "@/components/work-provider";
 import { TOOLS } from "@/config/tools";
-import { WORK_LIMITS } from "@/config/work";
 import { parseNachbesserungen } from "@/lib/answer-parse";
+import { ersetzeOffenePunkte } from "@/lib/punkte";
 
 const MIN_CENTS = TOOLS.abschluss.minBudgetCents;
 const FOKUS = TOOLS.abschluss.fields[0].options!;
@@ -40,14 +40,7 @@ export default function AbschlussPage() {
   }
 
   function alsPunkteUebernehmen() {
-    update((w) => {
-      const vorhanden = new Set(w.punkte.map((p) => p.text.trim().toLowerCase()));
-      const neu = nachbesserungen
-        .map((t) => t.replace(/\s+/g, " ").trim().slice(0, WORK_LIMITS.punktText))
-        .filter((t) => t && !vorhanden.has(t.toLowerCase()))
-        .map((text) => ({ id: newId(), text, herkunft: "abschluss" as const, erledigt: false }));
-      return { ...w, punkte: [...w.punkte, ...neu].slice(0, WORK_LIMITS.maxPunkte) };
-    });
+    update((w) => ({ ...w, punkte: ersetzeOffenePunkte(w.punkte, "abschluss", nachbesserungen, newId) }));
   }
 
   return (
@@ -95,6 +88,7 @@ export default function AbschlussPage() {
           <section className="mt-4 flex flex-col gap-2 rounded-lg border border-blue-200 bg-blue-50 p-4" aria-label="Nachbesserungen übernehmen">
             <h2 className="font-semibold">{nachbesserungen.length} Nachbesserungen als offene Punkte übernehmen</h2>
             <ApplyButton label="Alle als offene Punkte speichern" onApply={alsPunkteUebernehmen} />
+            <p className="text-xs text-zinc-600">Noch offene Punkte aus dem letzten Abschluss-Check werden dabei ersetzt. Erledigte bleiben.</p>
             <p className="text-xs text-zinc-600">
               Du findest sie danach unter <Link href="/arbeit#punkte" className="underline">Meine Arbeit</Link>. Im Schreibassistenten kannst du sie einzeln angehen.
             </p>

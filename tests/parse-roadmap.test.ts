@@ -36,6 +36,11 @@ Text`;
     const t = "## Vorschläge für eine bessere Fragestellung\n\n1. Inwiefern trug X zu Y bei?\n\nSie grenzt auf Z ein.\n\n2. Wie stellte die Presse Y dar?\n\nRegional.\n\n## Nächster Schritt\nText";
     expect(parseFragestellungVorschlaege(t)).toEqual(["Inwiefern trug X zu Y bei?", "Wie stellte die Presse Y dar?"]);
   });
+  it("schneidet Erläuterungen ab, die in derselben Zeile stehen", () => {
+    const t = "## Vorschläge für eine bessere Fragestellung\n1. Inwiefern trug die Krise zum Ende bei? Das grenzt auf einen Faktor ein; der Kompromiss ist X.\n2. Wie ging die Presse damit um?\n\n## Nächster Schritt\nText";
+    expect(parseFragestellungVorschlaege(t)).toEqual(["Inwiefern trug die Krise zum Ende bei?", "Wie ging die Presse damit um?"]);
+    expect(parseFragestellungVorschlaege("## Vorschläge für eine bessere Fragestellung\n1. Eine Aussage ohne Fragezeichen")).toEqual(["Eine Aussage ohne Fragezeichen"]);
+  });
   it("übernimmt die Gliederung und entfernt auf Wunsch Erläuterungen", () => {
     const t = "## Vorschlag für eine überarbeitete Gliederung\n1 Einleitung – Hinführung\n2 Hauptteil – Antwort\n2.1 Wirtschaft - Zahlen\n\n## Was sich geändert hat\n- x";
     const g = parseGliederungVorschlag(t);
@@ -120,5 +125,30 @@ describe("Fahrplan", () => {
       meilensteine: { abschlussCheck: 1, kolloquium: 2 },
     };
     expect(nextStep(computeRoadmap(w))).toBeNull();
+  });
+});
+
+import { ersetzeOffenePunkte } from "../src/lib/punkte";
+import { WORK_LIMITS } from "../src/config/work";
+
+describe("Offene Punkte", () => {
+  let n = 0;
+  const id = () => `n${++n}`;
+  const punkt = (text: string, herkunft: "eigen" | "abschluss" | "kolloquium", erledigt = false) => ({ id: `p-${text}`, text, herkunft, erledigt });
+
+  it("ersetzt offene Punkte derselben Quelle, behält Erledigtes und Fremdes", () => {
+    const alt = [punkt("alt offen", "abschluss"), punkt("alt erledigt", "abschluss", true), punkt("eigener", "eigen"), punkt("aus Kolloquium", "kolloquium")];
+    const neu = ersetzeOffenePunkte(alt, "abschluss", ["neu eins", "neu zwei"], id);
+    expect(neu.map((p) => p.text)).toEqual(["alt erledigt", "eigener", "aus Kolloquium", "neu eins", "neu zwei"]);
+    expect(neu.at(-1)).toMatchObject({ herkunft: "abschluss", erledigt: false });
+  });
+  it("übernimmt keine Doppelten, keine leeren Texte und normalisiert Leerraum", () => {
+    const neu = ersetzeOffenePunkte([punkt("Schon erledigt", "abschluss", true)], "abschluss", ["  neu \n eins ", "neu eins", "", "schon ERLEDIGT"], id);
+    expect(neu.map((p) => p.text)).toEqual(["Schon erledigt", "neu eins"]);
+  });
+  it("hält die Höchstgrenzen ein", () => {
+    const viele = Array.from({ length: WORK_LIMITS.maxPunkte + 20 }, (_, i) => `Punkt ${i}`);
+    expect(ersetzeOffenePunkte([], "kolloquium", viele, id)).toHaveLength(WORK_LIMITS.maxPunkte);
+    expect(ersetzeOffenePunkte([], "kolloquium", ["x".repeat(WORK_LIMITS.punktText + 50)], id)[0].text).toHaveLength(WORK_LIMITS.punktText);
   });
 });

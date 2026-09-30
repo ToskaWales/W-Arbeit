@@ -34,7 +34,12 @@ export const parseGliederungVorschlag = (t: string) => section(t, "Vorschlag fü
 // Die Vorschläge stehen als nummerierte Liste; jeweils die erste Zeile ist die Formulierung, danach kommt die Erläuterung.
 export function parseFragestellungVorschlaege(t: string): string[] {
   return numberedItems(section(t, "Vorschläge für eine bessere Fragestellung"))
-    .map((i) => i.split("\n")[0].trim())
+    .map((i) => {
+      const first = i.split("\n")[0].trim();
+      // Fragestellungen sind Fragen: alles nach dem ersten Fragezeichen ist Erläuterung (falls die KI sie in dieselbe Zeile schreibt).
+      const q = first.indexOf("?");
+      return (q >= 0 ? first.slice(0, q + 1) : first).trim();
+    })
     .filter(Boolean);
 }
 

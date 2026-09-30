@@ -49,7 +49,7 @@ Genau fünf nummerierte Punkte, in dieser Reihenfolge, jeweils mit kurzer Begrü
 Wenn ein Punkt kein Problem ist, sag das ehrlich in einem Satz.
 
 ## Vorschläge für eine bessere Fragestellung
-Genau drei ausformulierte Alternativen als nummerierte Liste. Nach jeder Alternative in einem Satz: Was grenzt sie besser ein, und welchen Kompromiss bringt sie mit? Berücksichtige Fach, Thema und Zeitraum.
+Genau drei ausformulierte Alternativen als nummerierte Liste. Schreibe jede Alternative allein in eine Zeile (nur die Fragestellung, endend mit einem Fragezeichen). Schreibe den Erläuterungssatz darunter in eine eigene Zeile ohne Nummer: Was grenzt sie besser ein, und welchen Kompromiss bringt sie mit? Berücksichtige Fach, Thema und Zeitraum.
 
 ## Nächster Schritt
 Ein bis zwei Sätze: Welche Variante passt wozu, und was sollte der Schüler noch klären?

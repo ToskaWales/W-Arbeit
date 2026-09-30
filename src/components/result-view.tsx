@@ -19,16 +19,18 @@ export function ResultView({
   error,
   waitingText,
   doneNote,
+  keepDoneNote,
 }: {
   phase: Phase;
   answer: string;
   error: string;
   waitingText: string;
   doneNote?: string;
+  keepDoneNote?: boolean; // Hinweis auch im Schreibmodus zeigen (für Tools, die nichts ausformulieren)
 }) {
   const [mode] = useMode();
   const note =
-    mode === "schreiben"
+    mode === "schreiben" && !keepDoneNote
       ? "Die KI kann sich irren. Prüfe alle Fakten, ersetze „[Beleg nötig]“ durch echte Quellen und gib die KI-Hilfe in deiner Arbeit an."
       : doneNote;
   return (

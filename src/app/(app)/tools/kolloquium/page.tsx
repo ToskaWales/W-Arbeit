@@ -9,8 +9,8 @@ import { Spinner } from "@/components/result-view";
 import { ApplyButton } from "@/components/apply-button";
 import { useToolStream } from "@/components/use-tool-stream";
 import { newId, useWork } from "@/components/work-provider";
-import { WORK_LIMITS } from "@/config/work";
 import { parseLuecken } from "@/lib/answer-parse";
+import { ersetzeOffenePunkte } from "@/lib/punkte";
 import { KOLLOQUIUM, TOOLS } from "@/config/tools";
 
 interface Turn {
@@ -228,16 +228,7 @@ function Kolloquium({ initialKurzfassung }: { initialKurzfassung: string }) {
               <h2 className="font-semibold">{parseLuecken(feedback).length} Lücken als offene Punkte übernehmen</h2>
               <ApplyButton
                 label="Als offene Punkte speichern"
-                onApply={() =>
-                  update((w) => {
-                    const vorhanden = new Set(w.punkte.map((p) => p.text.trim().toLowerCase()));
-                    const neu = parseLuecken(feedback)
-                      .map((t) => t.replace(/\s+/g, " ").trim().slice(0, WORK_LIMITS.punktText))
-                      .filter((t) => t && !vorhanden.has(t.toLowerCase()))
-                      .map((text) => ({ id: newId(), text, herkunft: "kolloquium" as const, erledigt: false }));
-                    return { ...w, punkte: [...w.punkte, ...neu].slice(0, WORK_LIMITS.maxPunkte) };
-                  })
-                }
+                onApply={() => update((w) => ({ ...w, punkte: ersetzeOffenePunkte(w.punkte, "kolloquium", parseLuecken(feedback), newId) }))}
               />
               <p className="text-xs text-zinc-600">Damit verbesserst du danach im Schreibassistenten gezielt die Stellen, an denen es noch fehlt.</p>
             </section>

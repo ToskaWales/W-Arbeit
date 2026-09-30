@@ -228,6 +228,7 @@ function Suche() {
           error={error}
           waitingText="Die KI durchsucht das Internet. Das dauert etwa eine halbe Minute …"
           doneNote="Öffne jede Quelle selbst und prüfe sie, bevor du sie verwendest."
+          keepDoneNote
         />
         {empfohlen.length > 0 && (
           <section className="mt-4 flex flex-col gap-3 rounded-lg border border-blue-200 bg-blue-50 p-4" aria-label="Quellen übernehmen">

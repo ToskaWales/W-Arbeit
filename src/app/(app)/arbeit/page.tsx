@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { newId, useWork, type SaveState } from "@/components/work-provider";
 import { WORK_LIMITS as L } from "@/config/work";
 import { computeRoadmap, nextStep, type StepStatus } from "@/lib/roadmap";
@@ -32,19 +32,20 @@ function Section({ id, title, hint, children, open = true }: { id?: string; titl
 }
 
 function Field({ label, value, max, onChange, rows, hint }: { label: string; value: string; max: number; onChange: (v: string) => void; rows?: number; hint?: string }) {
+  const id = useId();
   return (
-    <label className="flex flex-col gap-1">
-      <span className="font-medium">{label}</span>
+    <div className="flex flex-col gap-1">
+      <label htmlFor={id} className="font-medium">{label}</label>
       {rows ? (
-        <textarea className={`${input} min-h-20`} rows={rows} value={value} maxLength={max} onChange={(e) => onChange(e.target.value)} />
+        <textarea id={id} aria-describedby={`${id}-z`} className={`${input} min-h-20`} rows={rows} value={value} maxLength={max} onChange={(e) => onChange(e.target.value)} />
       ) : (
-        <input className={input} value={value} maxLength={max} onChange={(e) => onChange(e.target.value)} />
+        <input id={id} aria-describedby={`${id}-z`} className={input} value={value} maxLength={max} onChange={(e) => onChange(e.target.value)} />
       )}
-      <span className="text-xs text-zinc-500">
+      <span id={`${id}-z`} className="text-xs text-zinc-500">
         {hint ? `${hint} · ` : ""}
         {value.length} / {max} Zeichen
       </span>
-    </label>
+    </div>
   );
 }
 
@@ -76,7 +77,10 @@ export default function ArbeitPage() {
   const setPunkt = (id: string, patch: Partial<OffenerPunkt>) => update((w) => ({ ...w, punkte: w.punkte.map((p) => (p.id === id ? { ...p, ...patch } : p)) }));
 
   function kapitelAusGliederung() {
-    const titles = work.gliederung.split("\n").map((l) => l.trim()).filter(Boolean);
+    // Nur die Hauptkapitel ("1 Einleitung", "2. Hauptteil"), Unterpunkte wie "2.1" gehören ins jeweilige Kapitel.
+    const lines = work.gliederung.split("\n").map((l) => l.trim()).filter(Boolean);
+    const haupt = lines.filter((l) => /^\d+\.?\s/.test(l));
+    const titles = haupt.length ? haupt : lines;
     update((w) => {
       const vorhanden = new Set(w.kapitel.map((k) => k.titel.trim().toLowerCase()));
       const neu = titles
