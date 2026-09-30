@@ -17,15 +17,18 @@ export const TOOL_CARDS: ToolCard[] = [
     id: "quellenkritik",
     title: "Quellenkritik",
     description: "Wie belastbar ist eine Quelle für deine These?",
+    href: "/tools/quellenkritik",
   },
   {
     id: "roter-faden",
     title: "Rote-Faden-Check",
     description: "Passt deine Gliederung zur Fragestellung?",
+    href: "/tools/roter-faden",
   },
   {
     id: "kolloquium",
     title: "Kolloquiums-Simulator",
     description: "Übe die Fragen der Prüfung im Gespräch.",
+    href: "/tools/kolloquium",
   },
 ];

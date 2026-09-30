@@ -41,10 +41,19 @@ vi.mock("@/lib/anthropic", () => ({
 }));
 
 const { POST } = await import("../src/app/api/claude/route");
+const { makePdf } = await import("./helpers");
 
 const FIELDS = { fach: "Geschichte", thema: "Weimarer Republik", fragestellung: "Warum scheiterte sie?", zeitraum: "6 Monate" };
-const call = (body: unknown) =>
-  POST(new Request("http://x/api/claude", { method: "POST", body: JSON.stringify(body) }));
+const call = (body: { code?: string } & Record<string, unknown>) => {
+  const { code, ...rest } = body;
+  return POST(
+    new Request("http://x/api/claude", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(code !== undefined ? { "x-access-code": code } : {}) },
+      body: JSON.stringify(rest),
+    }),
+  );
+};
 const ok = (over: object = {}) => ({ code: CODE, tool: "fragestellung", fields: FIELDS, ...over });
 
 beforeEach(async () => {
@@ -115,8 +124,55 @@ describe("/api/claude", () => {
     expect((await call(ok({ fields: { ...FIELDS, fragestellung: "a".repeat(601) } }))).status).toBe(400);
     expect(streamSpy).not.toHaveBeenCalled();
   });
+  it("verlangt bei kleinem Restbudget mindestens das Tool-Minimum (402), ohne die KI aufzurufen", async () => {
+    await store.addUsage(hashCode(CODE), 98 * 1_000_000, 1); // 2 Cent übrig, Minimum sind 3
+    const res = await call(ok());
+    expect(res.status).toBe(402);
+    expect(streamSpy).not.toHaveBeenCalled();
+  });
+  it("nimmt einen PDF-Upload an und schickt ihn als Dokument", async () => {
+    const pdf = await makePdf(2);
+    const form = new FormData();
+    form.set("tool", "quellenkritik");
+    form.set("fields", JSON.stringify({ verwendung: "Für Kapitel 2" }));
+    form.set("file", new File([pdf], "quelle.pdf", { type: "application/pdf" }));
+    const res = await POST(new Request("http://x/api/claude", { method: "POST", headers: { "x-access-code": CODE }, body: form }));
+    expect(res.status).toBe(200);
+    await res.text();
+    const content = streamSpy.mock.calls[0][0].messages[0].content;
+    expect(content[0]).toMatchObject({ type: "document", source: { type: "base64", media_type: "application/pdf" } });
+    expect(content[1].text).toContain("Verwendungszweck: Für Kapitel 2");
+  });
+  it("verlangt für PDFs ein Mindest-Restbudget von 25 Cent", async () => {
+    await store.addUsage(hashCode(CODE), 80 * 1_000_000, 1); // 20 Cent übrig
+    const form = new FormData();
+    form.set("tool", "quellenkritik");
+    form.set("fields", JSON.stringify({ verwendung: "x" }));
+    form.set("file", new File([await makePdf(1)], "q.pdf"));
+    const res = await POST(new Request("http://x/api/claude", { method: "POST", headers: { "x-access-code": CODE }, body: form }));
+    expect(res.status).toBe(402);
+    expect(streamSpy).not.toHaveBeenCalled();
+  });
+  it("lehnt zu große Uploads schon an der Größenangabe ab (413)", async () => {
+    const res = await POST(
+      new Request("http://x/api/claude", {
+        method: "POST",
+        headers: { "x-access-code": CODE, "content-length": String(6 * 1024 * 1024), "content-type": "multipart/form-data; boundary=x" },
+        body: "x",
+      }),
+    );
+    expect(res.status).toBe(413);
+  });
+  it("prüft den Code, bevor der Inhalt gelesen wird", async () => {
+    const res = await POST(
+      new Request("http://x/api/claude", { method: "POST", headers: { "x-access-code": "FALSCH", "content-type": "multipart/form-data; boundary=x" }, body: "kaputt" }),
+    );
+    expect(res.status).toBe(401);
+  });
   it("lehnt kaputtes JSON ab", async () => {
-    const res = await POST(new Request("http://x/api/claude", { method: "POST", body: "{kaputt" }));
+    const res = await POST(
+      new Request("http://x/api/claude", { method: "POST", headers: { "x-access-code": CODE }, body: "{kaputt" }),
+    );
     expect(res.status).toBe(400);
   });
 });

@@ -16,6 +16,9 @@ export function buildUserMessage(tool: ToolConfig, fields: unknown): string {
     const raw = data[f.key];
     const value = typeof raw === "string" ? clean(raw) : "";
     if (f.required && value === "") throw new InputError(`Bitte fülle das Feld „${f.label}“ aus.`);
+    if (value && f.options && !f.options.includes(value)) {
+      throw new InputError(`Ungültige Auswahl bei „${f.label}“.`);
+    }
     if (value.length > f.maxChars) {
       throw new InputError(`„${f.label}“ ist zu lang (maximal ${f.maxChars} Zeichen).`);
     }

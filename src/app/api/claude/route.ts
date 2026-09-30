@@ -1,48 +1,67 @@
 import { checkAccess } from "@/lib/access";
 import { getAnthropic } from "@/lib/anthropic";
 import { calculateCostMicroCents, microToCents } from "@/lib/cost";
+import { prepareRequest, type ToolInput } from "@/lib/prepare";
 import { getStore } from "@/lib/store";
-import { buildUserMessage, InputError } from "@/lib/tool-input";
-import { DAILY_REQUEST_LIMIT, TOOLS, type ToolId } from "@/config/tools";
-import { SYSTEM_PROMPTS } from "@/prompts";
+import { InputError } from "@/lib/tool-input";
+import { DAILY_REQUEST_LIMIT, PDF_MAX_BYTES } from "@/config/tools";
 
 export const maxDuration = 60;
+
+// Vercel erlaubt ca. 4,5 MB pro Anfrage; etwas Luft für die Formularfelder.
+const MAX_BODY_BYTES = PDF_MAX_BYTES + 256 * 1024;
 
 function json(status: number, error: string) {
   return Response.json({ error }, { status });
 }
 
+async function readBody(request: Request): Promise<{ tool: unknown; input: ToolInput }> {
+  const type = request.headers.get("content-type") ?? "";
+  if (type.includes("multipart/form-data")) {
+    const form = await request.formData();
+    const file = form.get("file");
+    let fields: unknown;
+    try {
+      fields = JSON.parse(String(form.get("fields") ?? "null"));
+    } catch {
+      throw new InputError("Ungültige Anfrage.");
+    }
+    return { tool: form.get("tool"), input: { fields, file: file instanceof File && file.size > 0 ? file : null } };
+  }
+  const body = await request.json();
+  return { tool: body.tool, input: { fields: body.fields, history: body.history, finish: body.finish } };
+}
+
 export async function POST(request: Request) {
-  let body: { code?: unknown; tool?: unknown; fields?: unknown };
+  const store = getStore();
+  // Zuerst prüfen (Code steht im Header), dann erst den Inhalt einlesen.
+  const access = await checkAccess(store, request.headers.get("x-access-code"), DAILY_REQUEST_LIMIT);
+  if (!access.ok) return json(access.status, access.error);
+
+  if (Number(request.headers.get("content-length") ?? 0) > MAX_BODY_BYTES) {
+    return json(413, "Die Datei ist zu groß.");
+  }
+
+  let prepared;
   try {
-    body = await request.json();
-  } catch {
+    const { tool, input } = await readBody(request);
+    prepared = await prepareRequest(tool, input);
+  } catch (err) {
+    if (err instanceof InputError) return json(400, err.message);
     return json(400, "Ungültige Anfrage.");
   }
 
-  const store = getStore();
-  // Zuerst prüfen, dann erst irgendetwas anderes tun.
-  const access = await checkAccess(store, body.code, DAILY_REQUEST_LIMIT);
-  if (!access.ok) return json(access.status, access.error);
-
-  const toolId = body.tool as ToolId;
-  if (typeof toolId !== "string" || !Object.hasOwn(TOOLS, toolId)) return json(400, "Unbekanntes Tool.");
-  const tool = TOOLS[toolId];
-
-  let userMessage: string;
-  try {
-    userMessage = buildUserMessage(tool, body.fields);
-  } catch (err) {
-    if (err instanceof InputError) return json(400, err.message);
-    throw err;
+  const restMicro = access.record.budgetMicro - access.record.costMicro;
+  if (restMicro < prepared.minBudgetMicro) {
+    return json(402, `Für diese Anfrage braucht dein Budget mindestens ${microToCents(prepared.minBudgetMicro)} Cent. Dein Budget reicht nicht mehr aus.`);
   }
 
   const stream = getAnthropic().messages.stream({
-    model: tool.model,
-    max_tokens: tool.maxTokens,
-    system: SYSTEM_PROMPTS[toolId],
-    ...(tool.effort ? { output_config: { effort: tool.effort } } : {}),
-    messages: [{ role: "user", content: userMessage }],
+    model: prepared.model,
+    max_tokens: prepared.maxTokens,
+    system: prepared.system,
+    ...(prepared.effort ? { output_config: { effort: prepared.effort } } : {}),
+    messages: prepared.messages,
   });
 
   const encoder = new TextEncoder();
@@ -79,7 +98,7 @@ export async function POST(request: Request) {
     .finalMessage()
     .then(async (final) => {
       // Usage steht am Ende des Streams: jetzt Kosten buchen.
-      await store.addUsage(access.hash, calculateCostMicroCents(tool.model, final.usage), Date.now());
+      await store.addUsage(access.hash, calculateCostMicroCents(prepared.model, final.usage), Date.now());
       if (final.stop_reason === "max_tokens") send("\n\n[Die Antwort wurde wegen des Längenlimits gekürzt.]");
       if (open) controller.close();
     })
@@ -94,12 +113,11 @@ export async function POST(request: Request) {
     return json(502, "Die KI ist gerade nicht erreichbar. Bitte versuche es in ein paar Minuten noch einmal.");
   }
 
-  const restCent = microToCents(access.record.budgetMicro - access.record.costMicro);
   return new Response(readable, {
     headers: {
       "Content-Type": "text/plain; charset=utf-8",
       "Cache-Control": "no-store",
-      "X-Restbudget-Cent": restCent.toFixed(2),
+      "X-Restbudget-Cent": microToCents(restMicro).toFixed(2),
     },
   });
 }

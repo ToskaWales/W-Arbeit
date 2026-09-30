@@ -2,69 +2,25 @@
 
 import Link from "next/link";
 import { useRef, useState } from "react";
-import { useAccess } from "@/components/access-provider";
-import { FormattedText } from "@/components/formatted-text";
+import { ResultView } from "@/components/result-view";
+import { useToolStream } from "@/components/use-tool-stream";
 import { TOOLS } from "@/config/tools";
-
-type Phase = "idle" | "waiting" | "streaming" | "done" | "error";
 
 const max = Object.fromEntries(TOOLS.fragestellung.fields.map((f) => [f.key, f.maxChars]));
 const input = "min-h-12 w-full rounded border border-zinc-300 bg-white px-3 py-2 text-base";
 
 export default function FragestellungPage() {
-  const { code, refreshBudget, logout } = useAccess();
+  const { phase, answer, error, busy, run } = useToolStream();
   const [fields, setFields] = useState({ fach: "", thema: "", fragestellung: "", zeitraum: "" });
-  const [phase, setPhase] = useState<Phase>("idle");
-  const [answer, setAnswer] = useState("");
-  const [error, setError] = useState("");
   const resultRef = useRef<HTMLDivElement>(null);
 
   const set = (key: keyof typeof fields) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setFields((f) => ({ ...f, [key]: e.target.value }));
-  const busy = phase === "waiting" || phase === "streaming";
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setError("");
-    setAnswer("");
-    setPhase("waiting");
     setTimeout(() => resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
-
-    let res: Response;
-    try {
-      res = await fetch("/api/claude", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code, tool: "fragestellung", fields }),
-      });
-    } catch {
-      setError("Keine Verbindung. Prüfe dein Internet und versuche es noch einmal.");
-      return setPhase("error");
-    }
-
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setError(data.error ?? "Etwas ist schiefgegangen. Bitte versuche es noch einmal.");
-      if (res.status === 401 || res.status === 403) logout(); // Code ungültig oder gesperrt
-      if (res.status === 402) void refreshBudget();
-      return setPhase("error");
-    }
-
-    try {
-      const reader = res.body!.getReader();
-      const decoder = new TextDecoder();
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        setPhase("streaming");
-        setAnswer((a) => a + decoder.decode(value, { stream: true }));
-      }
-      setPhase("done");
-    } catch {
-      setError("Die Verbindung wurde unterbrochen. Die Antwort oben ist unvollständig.");
-      setPhase("error");
-    }
-    void refreshBudget();
+    await run({ json: { tool: "fragestellung", fields } });
   }
 
   return (
@@ -101,25 +57,14 @@ export default function FragestellungPage() {
         </button>
       </form>
 
-      <div ref={resultRef} className="mt-6 scroll-mt-4" aria-busy={busy}>
-        {phase === "waiting" && (
-          <p className="flex items-center gap-2 text-zinc-600">
-            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-zinc-400 border-t-transparent" aria-hidden />
-            Die KI liest deine Fragestellung. Das dauert ein paar Sekunden …
-          </p>
-        )}
-        {answer && (
-          <section className="rounded-lg border border-zinc-200 bg-white p-4">
-            <FormattedText text={answer} />
-            {phase === "streaming" && <span className="mt-2 inline-block animate-pulse text-zinc-400">▍</span>}
-          </section>
-        )}
-        {phase === "done" && (
-          <p className="mt-3 text-sm text-zinc-500">
-            Denke selbst über die Rückfragen nach und schärfe deine Fragestellung in eigenen Worten.
-          </p>
-        )}
-        {error && <p role="alert" className="mt-3 rounded bg-red-50 p-3 text-red-800">{error}</p>}
+      <div ref={resultRef} className="scroll-mt-4">
+        <ResultView
+          phase={phase}
+          answer={answer}
+          error={error}
+          waitingText="Die KI liest deine Fragestellung. Das dauert ein paar Sekunden …"
+          doneNote="Denke selbst über die Rückfragen nach und schärfe deine Fragestellung in eigenen Worten."
+        />
       </div>
     </main>
   );
