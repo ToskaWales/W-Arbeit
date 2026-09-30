@@ -11,7 +11,7 @@ const MAX_BODY_BYTES = 600 * 1024;
 function fail(err: unknown) {
   if (err instanceof EncryptionConfigError) {
     console.error("Verschlüsselung nicht eingerichtet:", err.message);
-    return Response.json({ error: "Das Speichern der Seminararbeit ist noch nicht eingerichtet." }, { status: 503 });
+    return Response.json({ error: "Das Speichern der Seminararbeit ist gerade nicht verfügbar. Bitte sag dem Betreiber Bescheid." }, { status: 503 });
   }
   console.error("Fehler bei der Seminararbeit:", err instanceof Error ? err.message : err);
   return Response.json({ error: UNAVAILABLE_MESSAGE }, { status: 500 });

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { summarize } from "@/lib/admin-summary";
+import { euroToCents, formatEuro } from "@/lib/money";
 
 interface Row {
   id: string;
@@ -9,7 +10,8 @@ interface Row {
   budgetCents: number;
   chargedCents: number; // verrechnet, das sieht auch der Schüler
   restCents: number;
-  costCents: number; // echte API-Kosten
+  costCents: number; // echte API-Kosten in Euro
+  costUsdCents: number; // dasselbe in US-Dollar (so rechnet Anthropic ab)
   profitCents: number;
   requests: number;
   active: boolean;
@@ -18,7 +20,7 @@ interface Row {
   lastUsedAt: number | null;
 }
 
-const fmt = (n: number) => n.toFixed(2);
+const fmt = formatEuro; // alle Beträge sind Euro-Cent
 const fmtDate = (t: number | null) => (t ? new Date(t).toLocaleString("de-DE") : "nie");
 
 async function api(path: string, method: string, body?: unknown) {
@@ -37,16 +39,20 @@ export default function AdminClient() {
   const [error, setError] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
-  const [budget, setBudget] = useState("500");
+  const [budget, setBudget] = useState("5");
   const [newCode, setNewCode] = useState<{ name: string; code: string } | null>(null);
   const [showHidden, setShowHidden] = useState(false);
   const [markup, setMarkup] = useState<number | null>(null);
+  const [rate, setRate] = useState<number | null>(null);
+  const [problems, setProblems] = useState<string[]>([]);
 
   const apply = useCallback((r: Awaited<ReturnType<typeof api>>) => {
     if (r.status === 401) setState("login");
     else if (r.ok) {
       setRows(r.data.codes);
       setMarkup(r.data.markupPercent ?? null);
+      setRate(r.data.eurPerUsd ?? null);
+      setProblems(r.data.setup?.problems ?? []);
       setState("in");
     }
   }, []);
@@ -82,7 +88,9 @@ export default function AdminClient() {
   async function create(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    const r = await api("/api/admin/codes", "POST", { name, budgetCents: Number(budget) });
+    const cents = euroToCents(budget);
+    if (cents === null) return setError("Bitte gib das Guthaben in Euro an, zum Beispiel 5 oder 7,50.");
+    const r = await api("/api/admin/codes", "POST", { name, budgetCents: cents });
     if (!r.ok) return setError(r.data.error ?? "Fehler.");
     setNewCode({ name: r.data.name, code: r.data.code });
     setName("");
@@ -97,8 +105,11 @@ export default function AdminClient() {
   }
 
   async function topUp(row: Row) {
-    const v = window.prompt(`Wie viele Cent soll ${row.name} zusätzlich bekommen?`, "500");
-    if (v) await patch(row.id, { addCents: Number(v) });
+    const v = window.prompt(`Wie viel Euro soll ${row.name} zusätzlich bekommen?`, "5");
+    if (!v) return;
+    const cents = euroToCents(v);
+    if (cents === null) return setError("Bitte gib den Betrag in Euro an, zum Beispiel 5 oder 7,50.");
+    await patch(row.id, { addCents: cents });
   }
 
   async function arbeitLoeschen(row: Row) {
@@ -153,10 +164,16 @@ export default function AdminClient() {
 
       <form onSubmit={create} className="mb-4 flex flex-col gap-2 sm:flex-row">
         <input className={input} placeholder="Name (Pflicht), z. B. Lisa M." value={name} onChange={(e) => setName(e.target.value)} required />
-        <input className={`${input} sm:w-32`} type="number" min="1" placeholder="Cent" value={budget} onChange={(e) => setBudget(e.target.value)} required />
+        <input className={`${input} sm:w-32`} inputMode="decimal" placeholder="Guthaben in €" aria-label="Guthaben in Euro" value={budget} onChange={(e) => setBudget(e.target.value)} required />
         <button className={btn} type="submit">Code erstellen</button>
       </form>
-      <p className="mb-4 text-sm text-zinc-600">Budget in US-Cent (100 = 1 $).</p>
+      <p className="mb-4 text-sm text-zinc-600">Guthaben in Euro, zum Beispiel 5 oder 7,50.</p>
+
+      {problems.map((p) => (
+        <p key={p} role="alert" className="mb-3 rounded border border-amber-400 bg-amber-50 p-3 text-amber-950">
+          <strong>Einrichtung unvollständig:</strong> {p}
+        </p>
+      ))}
 
       {error && <p role="alert" className="mb-3 text-red-700">{error}</p>}
 
@@ -177,12 +194,12 @@ export default function AdminClient() {
         ].map(([label, value, hint]) => (
           <div key={label as string} className="rounded border border-zinc-300 bg-white p-3">
             <p className="text-xs text-zinc-600">{label as string}</p>
-            <p className="text-lg font-semibold">{fmt(value as number)} Cent</p>
+            <p className="text-lg font-semibold">{fmt(value as number)}</p>
             <p className="text-xs text-zinc-500">{hint as string}</p>
           </div>
         ))}
       </section>
-      <p className="mb-2 text-xs text-zinc-500">Alle Summen über alle {summary.codes} Codes (auch ausgeblendete). Aufschlag: {markup ?? "…"} % auf die echten Kosten. US-Cent.</p>
+      <p className="mb-2 text-xs text-zinc-500">Alle Summen über alle {summary.codes} Codes (auch ausgeblendete). Alle Beträge in Euro. Aufschlag: {markup ?? "…"} % auf die echten Kosten. Anthropic rechnet in US-Dollar ab, umgerechnet mit 1 $ = {rate ? rate.toFixed(4).replace(".", ",") : "…"} € (Kurs änderbar über USD_EUR_RATE). Echte Kosten in Dollar siehst du, wenn du mit der Maus über den Betrag fährst.</p>
 
       <label className="mb-2 flex items-center gap-2 text-sm">
         <input type="checkbox" checked={showHidden} onChange={(e) => setShowHidden(e.target.checked)} />
@@ -212,7 +229,7 @@ export default function AdminClient() {
                 <td className="p-2">{fmt(r.budgetCents)}</td>
                 <td className="p-2">{fmt(r.chargedCents)}</td>
                 <td className="p-2">{fmt(r.restCents)}</td>
-                <td className="p-2">{fmt(r.costCents)}</td>
+                <td className="p-2" title={`${(r.costUsdCents / 100).toFixed(4)} US-Dollar`}>{fmt(r.costCents)}</td>
                 <td className="p-2">{fmt(r.profitCents)}</td>
                 <td className="p-2">{r.requests}</td>
                 <td className="p-2">{fmtDate(r.lastUsedAt)}</td>

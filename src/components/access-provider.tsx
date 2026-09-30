@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ModeSwitch } from "./mode-switch";
+import { formatEuro } from "@/lib/money";
 import { clearToolState } from "@/lib/tool-store";
 import { WorkProvider } from "./work-provider";
 import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore } from "react";
@@ -50,7 +51,7 @@ export function useAccess(): AccessContext {
   return v;
 }
 
-export const formatBudget = (cents: number) => `${(cents / 100).toFixed(2).replace(".", ",")} $`;
+export const formatBudget = formatEuro; // Beträge sind in Euro-Cent
 
 async function fetchSession(code: string) {
   try {

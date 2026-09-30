@@ -10,7 +10,8 @@
     "test": "vitest run",
     "code:create": "tsx --env-file=.env.local scripts/create-code.ts",
     "check:legal": "tsx --env-file=.env.local scripts/check-legal.ts",
-    "measure": "tsx --env-file=.env.local scripts/measure-costs.ts"
+    "measure": "tsx --env-file=.env.local scripts/measure-costs.ts",
+    "key": "node -e \"console.log(require(\\\"crypto\\\").randomBytes(32).toString(\\\"base64\\\"))\""
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.129.0",

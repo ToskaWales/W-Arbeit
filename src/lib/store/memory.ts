@@ -1,4 +1,4 @@
-import { withMarkup } from "../cost";
+import { chargedFromCost } from "../cost";
 import type { CodePatch, CodeRecord, CodeStore } from "./types";
 
 export class MemoryStore implements CodeStore {
@@ -29,7 +29,7 @@ export class MemoryStore implements CodeStore {
     const r = this.records.get(hash);
     if (!r) return;
     r.costMicro += costMicro;
-    r.chargedMicro += withMarkup(costMicro);
+    r.chargedMicro += chargedFromCost(costMicro);
     r.requests += 1;
     r.lastUsedAt = now;
   }

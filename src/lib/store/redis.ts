@@ -1,5 +1,5 @@
 import { Redis } from "@upstash/redis";
-import { withMarkup } from "../cost";
+import { chargedFromCost } from "../cost";
 import type { CodePatch, CodeRecord, CodeStore } from "./types";
 
 const codeKey = (hash: string) => `code:${hash}`;
@@ -11,7 +11,7 @@ function toRecord(d: Record<string, string | number> | null): CodeRecord | null 
     budgetMicro: Number(d.budgetMicro),
     costMicro: Number(d.costMicro),
     // Ältere Datensätze ohne verrechneten Betrag: nachträglich mit Aufschlag berechnen
-    chargedMicro: d.chargedMicro === undefined ? withMarkup(Number(d.costMicro)) : Number(d.chargedMicro),
+    chargedMicro: d.chargedMicro === undefined ? chargedFromCost(Number(d.costMicro)) : Number(d.chargedMicro),
     requests: Number(d.requests),
     active: Number(d.active) === 1,
     createdAt: Number(d.createdAt),
@@ -68,7 +68,7 @@ export class RedisStore implements CodeStore {
   async addUsage(hash: string, costMicro: number, now: number) {
     const p = this.redis.pipeline();
     p.hincrby(codeKey(hash), "costMicro", Math.round(costMicro));
-    p.hincrby(codeKey(hash), "chargedMicro", withMarkup(costMicro));
+    p.hincrby(codeKey(hash), "chargedMicro", chargedFromCost(costMicro));
     p.hincrby(codeKey(hash), "requests", 1);
     p.hset(codeKey(hash), { lastUsedAt: now });
     await p.exec();

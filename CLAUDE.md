@@ -54,8 +54,10 @@ Dahinter steckt die Claude API.
 - **Nur der Admin kann Codes erstellen.** Es gibt keine Selbstregistrierung, keinen öffentlichen Endpunkt und keine Möglichkeit,
   dass ein Nutzer weitere Codes erzeugt. Alle Endpunkte zum Erstellen, Ändern, Aufladen und Sperren von Codes prüfen
   serverseitig die Admin-Anmeldung und antworten sonst mit 401/403.
-- Datensatz pro Code: Name (Pflicht), Budget in Cent (= Guthaben des Schülers), **echte API-Kosten**, **verrechneter Betrag** (echte Kosten + Aufschlag),
+- Datensatz pro Code: Name (Pflicht), Budget in Euro-Cent (= Guthaben des Schülers), **echte API-Kosten**, **verrechneter Betrag** (echte Kosten + Aufschlag),
   Anzahl Anfragen, aktiv ja/nein, ausgeblendet ja/nein, erstellt am, zuletzt genutzt.
+- **Währung:** Guthaben und verrechnete Beträge sind Euro. Anthropic rechnet in US-Dollar ab; echte Kosten werden in Dollar gebucht und mit `USD_EUR_RATE` (Standard 0,8807, EZB-Kurs) nach Euro umgerechnet. Der Admin sieht Verbrauch, echte Kosten und Gewinn in €.
+- **Speicherschlüssel:** `WORK_ENCRYPTION_KEY` (mit `npm run key` erzeugen, in Vercel und `.env.local` setzen, sichern). Fehlt er, zeigt die Admin-Seite eine Warnung und die Seminararbeit wird nicht gespeichert.
 - **Aufschlag:** `MARKUP_PERCENT` (10 %, `src/config/pricing.ts`) auf die echten Kosten ist der Gewinn des Betreibers. Beim Buchen wird der verrechnete Betrag
   gespeichert; das Guthaben sinkt um diesen Betrag. **Schüler sehen und bekommen nur den verrechneten Betrag** (Restbudget), nie echte Kosten oder Gewinn.
   Ältere Datensätze ohne verrechneten Betrag werden beim Lesen mit dem Aufschlag berechnet.

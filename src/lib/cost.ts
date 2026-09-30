@@ -1,4 +1,4 @@
-import { MARKUP_PERCENT } from "../config/pricing";
+import { MARKUP_PERCENT, usdToEur } from "../config/pricing";
 import { MODEL_PRICES, WEB_SEARCH_CENTS_PER_REQUEST, type ModelId } from "../config/models";
 
 export interface Usage {
@@ -33,4 +33,9 @@ export function microToCents(micro: number): number {
 // Verrechneter Betrag für den Schüler: echte Kosten plus Aufschlag (ganze Mikro-Cent, kaufmännisch gerundet).
 export function withMarkup(costMicro: number): number {
   return Math.round(costMicro + (costMicro * MARKUP_PERCENT) / 100);
+}
+
+// Verrechneter Betrag in EURO-Mikro-Cent für eine Buchung: echte Kosten (US-Dollar) mit Kurs umrechnen, dann Aufschlag.
+export function chargedFromCost(costUsdMicro: number, rate = usdToEur()): number {
+  return withMarkup(Math.round(costUsdMicro * rate));
 }

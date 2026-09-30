@@ -1,5 +1,6 @@
 import { createAccessCode } from "./access";
 import { generateCode, hashCode, normalizeName } from "./codes";
+import { usdToEur } from "../config/pricing";
 import { MICRO_PER_CENT, microToCents } from "./cost";
 import type { CodeRecord, CodeStore } from "./store/types";
 
@@ -40,15 +41,18 @@ export async function renameCode(store: CodeStore, hash: string, name: unknown) 
   return store.update(hash, { name: normalizeName(name) });
 }
 
-export function toRow(hash: string, r: CodeRecord) {
+export function toRow(hash: string, r: CodeRecord, rate = usdToEur()) {
+  const costEurMicro = r.costMicro * rate; // echte Kosten (US-Dollar) in Euro umgerechnet
   return {
     id: hash,
     name: r.name,
+    // Alle Beträge in EURO-Cent. Guthaben und verrechneter Betrag sind fest in Euro gespeichert.
     budgetCents: microToCents(r.budgetMicro),
     chargedCents: microToCents(r.chargedMicro), // verrechnet: das sieht auch der Schüler
     restCents: microToCents(r.budgetMicro - r.chargedMicro),
-    costCents: microToCents(r.costMicro), // echte API-Kosten, nur im Admin
-    profitCents: microToCents(r.chargedMicro - r.costMicro),
+    costCents: microToCents(costEurMicro), // echte API-Kosten in Euro (nur im Admin)
+    costUsdCents: microToCents(r.costMicro), // dasselbe in US-Dollar, so wie Anthropic abrechnet
+    profitCents: microToCents(r.chargedMicro - costEurMicro),
     requests: r.requests,
     active: r.active,
     hidden: r.hidden,

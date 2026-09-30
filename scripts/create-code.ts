@@ -1,4 +1,4 @@
-// Nutzung: npm run code:create -- "Lisa M." 500      (Budget in US-Cent)
+// Nutzung: npm run code:create -- "Lisa M." 500      (Budget in Euro-Cent)
 // Bis zur Admin-Seite (M2) ist das der Weg, einen Code anzulegen.
 import { createAccessCode } from "../src/lib/access";
 import { generateCode } from "../src/lib/codes";
