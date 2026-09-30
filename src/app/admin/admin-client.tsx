@@ -93,6 +93,14 @@ export default function AdminClient() {
     if (v) await patch(row.id, { addCents: Number(v) });
   }
 
+  async function arbeitLoeschen(row: Row) {
+    if (!window.confirm(`Die gespeicherte Seminararbeit von ${row.name} unwiderruflich löschen? Der Code bleibt bestehen.`)) return;
+    setError("");
+    const r = await api(`/api/admin/codes/${row.id}/work`, "DELETE");
+    if (!r.ok) setError(r.data.error ?? "Fehler.");
+    else window.alert("Die Seminararbeit wurde gelöscht.");
+  }
+
   async function rename(row: Row) {
     const v = window.prompt("Neuer Name:", row.name);
     if (v) await patch(row.id, { name: v });
@@ -174,6 +182,7 @@ export default function AdminClient() {
                   <button className={small} onClick={() => topUp(r)}>Aufladen</button>
                   <button className={small} onClick={() => patch(r.id, { active: !r.active })}>{r.active ? "Sperren" : "Entsperren"}</button>
                   <button className={small} onClick={() => rename(r)}>Umbenennen</button>
+                  <button className={small} onClick={() => arbeitLoeschen(r)}>Arbeit löschen</button>
                 </td>
               </tr>
             ))}

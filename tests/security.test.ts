@@ -66,6 +66,7 @@ describe("Checkliste: Keine Geheimnisse im Browser-Code", () => {
     expect(ignore).toMatch(/^\.env\*$/m);
     expect(ignore).toMatch(/^!\.env\.example$/m);
     expect(fs.existsSync(path.resolve(SRC, "../.env.example"))).toBe(true);
+    expect(fs.readFileSync(path.resolve(SRC, "../.env.example"), "utf8")).toContain("WORK_ENCRYPTION_KEY=");
   });
 });
 

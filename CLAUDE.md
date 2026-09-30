@@ -33,7 +33,13 @@ Dahinter steckt die Claude API.
 
 - Der API-Key steht nur als Umgebungsvariable auf dem Server, nie im Frontend-Code.
 - Jede API-Anfrage wird serverseitig geprüft: gültiger Zugangscode, aktiv, Restbudget > 0, Tageslimit nicht überschritten.
-- Es werden **keine Inhalte** (Texte, PDFs, Antworten) gespeichert. Nur Code-Hash, Label, Kosten, Anzahl Anfragen.
+- **Gespeichert wird nur, was der Schüler selbst im Bereich „Meine Seminararbeit“ ablegt** (Fach, Thema, Fragestellung, Kurzfassung, Gliederung, Kapitel,
+  Quellenliste, offene Punkte, Fortschritt), und zwar **verschlüsselt** (AES-256-GCM, Schlüssel `WORK_ENCRYPTION_KEY`, an den Code-Hash gebunden),
+  nur mit Zugangscode abrufbar, löschbar durch Schüler und Admin, Ablauf 400 Tage nach der letzten Änderung.
+  **Nie gespeichert werden:** KI-Antworten, Kolloquium-Verläufe, hochgeladene PDFs. Ergebnisse gelangen nur per „Übernehmen“ des Schülers in die Arbeit.
+  Sonst nur Code-Hash, Label, Kosten, Anzahl Anfragen.
+- Die gespeicherte Arbeit lädt **immer der Server** selbst (nach Code-Prüfung). Der Browser darf sie nie als Anfrage-Inhalt mitschicken.
+- Websuche (Quellensuche): Links werden nur angeboten, wenn sie in den echten Suchergebnissen stehen, nicht aus dem Text der KI.
 - Nutzereingaben (auch PDF-Inhalte) gelten im Prompt als Daten, nicht als Anweisungen (Schutz vor Prompt Injection).
 - Jede Anfrage hat ein `max_tokens`-Limit.
 - Keine Namen oder Schulnamen in Prompts erzwingen; im UI darauf hinweisen, sie wegzulassen.
@@ -91,6 +97,12 @@ Gemeinsame Guardrail-Blöcke, die in **jedem** System-Prompt stehen (eine Datei 
    - Eingabe: Aufgabe (Einleitung / Abschnitt / Überleitung / Fazit / Überarbeiten), Länge (kurz/mittel/lang),
      optional Fragestellung, Stichpunkte, vorhandener Text
    - Ausgabe: Entwurf mit `[Beleg nötig]`-Markierungen und eine Liste, was der Schüler prüfen muss.
+   - Kennt das gewählte Kapitel, Gliederung, Fragestellung und Quellenliste; kann Kapitel ersetzen/ergänzen und offene Punkte abarbeiten.
+6. **Abschluss-Check** (beide Modi)
+   - Liest die ganze gespeicherte Arbeit (Mindestbudget 15 Cent). Ausgabe: Gesamteindruck, Checkliste (Tabelle), Nachbesserungen (werden zu offenen Punkten);
+     *Schreibmodus:* zusätzlich Verbesserungsvorschläge.
+7. **Quellensuche** (Teil der Quellenkritik-Seite, beide Modi)
+   - Websuche (höchstens 2 Suchen, 1 Cent pro Suche, Mindestbudget 15 Cent), empfiehlt Quellen mit Link nur aus echten Treffern, Übernahme in die Quellenliste.
 
 System-Prompts liegen in `src/prompts/` (eine Datei pro Tool), damit ich sie leicht anpassen kann.
 
@@ -125,16 +137,24 @@ System-Prompts liegen in `src/prompts/` (eine Datei pro Tool), damit ich sie lei
   KI-Hinweis (Hinweis auf Selbstständigkeitserklärung und Offenlegung der KI-Nutzung), Hinweis "keine Namen eingeben"
 - Fertig, wenn: Checkliste unten komplett abgehakt
 
+**M7 Seminararbeit-Bereich und Tool-Verbund**
+- Bereich „Meine Seminararbeit“ (verschlüsselt auf dem Server) mit Fahrplan in 7 Schritten: Fragestellung, Quellen, Gliederung/Roter Faden, Kapitel schreiben,
+  Abschluss-Check, Nachbessern, Kolloquium. Tools füllen sich aus der Arbeit und übernehmen Ergebnisse per Klick zurück.
+- Neue Tools: Abschluss-Check (liest die ganze Arbeit) und Quellensuche (Websuche, 2 Suchen)
+- Fertig, wenn: der ganze Ablauf mit echter KI durchläuft, Tests laufen, Datenschutzerklärung stimmt
+
 **M6 Schreibmodus**
 - Umschalter Sparring/Schreiben, Schreib-Varianten aller vier Tools, Schreibassistent, angepasste Hinweise und Datenschutzerklärung
 - Fertig, wenn: im Schreibmodus formulieren alle Tools aus, im Sparring-Modus verhalten sie sich wie zuvor,
   der Schreibassistent ist nur im Schreibmodus nutzbar, Tests laufen
 
+*(Kostenoptimierung nach Messung: kürzere Antworten, Haiku nur für Kolloquium-Fragen, `npm run measure` zum Nachmessen.)*
+
 *(Die geplante Beta mit Freunden entfällt bewusst. Vor dem Verteilen der Codes trotzdem selbst am Handy durchspielen.)*
 
 ## Nicht im Scope (Version 1)
 
-Eigene Nutzerkonten mit E-Mail, Bezahlsystem, Speichern von Arbeiten, Rubrik-Feedback, Zeitplan-Tracker, Export als PDF.
+Eigene Nutzerkonten mit E-Mail, Bezahlsystem, Rubrik-Feedback, Zeitplan-Tracker, Export als PDF.
 
 ## Bekannte Risiken
 
@@ -145,7 +165,8 @@ Eigene Nutzerkonten mit E-Mail, Bezahlsystem, Speichern von Arbeiten, Rubrik-Fee
 | Seite wird als kostenloser Allzweck-Chat missbraucht | Feste Prompts und Formulare, Eingabelängen, kein freier Chat außer Simulator mit Turn-Limit, Themenbindung im Prompt |
 | Schreibmodus: Schüler verstoßen gegen Regeln ihrer Schule oder geben KI-Texte als eigene aus | Hinweis auf Selbstständigkeitserklärung und Kennzeichnung im UI, `[Beleg nötig]` statt erfundener Quellen, Hinweiszeile unter Entwürfen, Frage an die Lehrkraft empfohlen |
 | PDF zu groß für Vercel | Limit im MVP, später Upload über Vercel Blob |
-| Datenschutz bei Minderjährigen | Keine Inhalte speichern, Hinweise im UI, Datenschutzerklärung |
+| Datenschutz bei Minderjährigen | Arbeit nur auf Wunsch des Schülers gespeichert, verschlüsselt, löschbar (Schüler und Admin), Ablauf nach 400 Tagen, keine KI-Antworten gespeichert, Hinweise im UI, Datenschutzerklärung; Einwilligung/Information bei Minderjährigen klären |
+| Verlust des Verschlüsselungsschlüssels | `WORK_ENCRYPTION_KEY` sicher sichern (Passwortmanager); ohne ihn sind gespeicherte Arbeiten unlesbar. Schüler können ihre Arbeit als Datei sichern |
 | Schlechte Antwortqualität | Beta-Test, Prompts iterativ verbessern |
 
 ## Checkliste vor Go-live
@@ -158,5 +179,8 @@ Eigene Nutzerkonten mit E-Mail, Bezahlsystem, Speichern von Arbeiten, Rubrik-Fee
 - [x] Codes lassen sich nur als Admin erstellen (per curl ohne Login getestet)
 - [ ] Impressum und Datenschutzerklärung online (Seiten fertig; LEGAL_* und UPSTASH_REGION setzen, `npm run check:legal`, Texte rechtlich prüfen lassen)
 - [x] KI-Hinweis sichtbar
+- [ ] `WORK_ENCRYPTION_KEY` erzeugt (`openssl rand -base64 32`), in Vercel gesetzt und sicher gesichert
+- [ ] Auftragsverarbeitungsverträge mit Vercel, Upstash und Anthropic abgeschlossen, Datenschutzerklärung rechtlich geprüft (Arbeit wird jetzt gespeichert)
+- [ ] Websuche in der Anthropic Console für die Organisation freigeschaltet (Quellensuche)
 - [ ] Test auf Handy und Desktop (im Handy-Browser-Modus getestet; echtes Gerät fehlt)
 - [x] Fehlerfall getestet (Budget leer, Code gesperrt, API nicht erreichbar)
