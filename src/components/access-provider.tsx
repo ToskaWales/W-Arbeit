@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ModeSwitch } from "./mode-switch";
+import { WorkProvider } from "./work-provider";
 import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore } from "react";
 
 const KEY = "wsh_code";
@@ -108,11 +109,14 @@ export function AccessProvider({ children }: { children: React.ReactNode }) {
             <button onClick={logout} className="rounded border border-zinc-300 px-2 py-1">Abmelden</button>
           </div>
         </div>
-        <div className="mx-auto w-full max-w-2xl px-4 pb-3">
-          <ModeSwitch />
+        <div className="mx-auto flex w-full max-w-2xl items-center gap-2 px-4 pb-3">
+          <div className="flex-1"><ModeSwitch /></div>
+          <Link href="/arbeit" className="flex min-h-12 items-center whitespace-nowrap rounded-lg border border-zinc-300 px-3 text-sm font-medium">Meine Arbeit</Link>
         </div>
       </header>
-      <div className="mx-auto w-full max-w-2xl flex-1 px-4 py-6">{children}</div>
+      <WorkProvider>
+        <div className="mx-auto w-full max-w-2xl flex-1 px-4 py-6">{children}</div>
+      </WorkProvider>
       <footer className="mx-auto w-full max-w-2xl px-4 pb-6 text-xs text-zinc-500">
         <p>Die KI kann sich irren. Prüfe Angaben nach und gib die KI-Hilfe in deiner Arbeit an.</p>
         <LegalLinks />

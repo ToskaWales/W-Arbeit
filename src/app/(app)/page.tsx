@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ArbeitKarte } from "@/components/arbeit-karte";
 import { KiHinweis } from "@/components/ki-hinweis";
 import { TOOL_CARDS } from "@/config/tool-cards";
 
@@ -7,6 +8,7 @@ export default function Home() {
     <main>
       <h1 className="mb-1 text-2xl font-semibold">Womit möchtest du üben?</h1>
       <p className="mb-5 text-zinc-600">Wähle ein Tool. Bitte gib keine Namen oder Schulnamen ein.</p>
+      <ArbeitKarte />
       <KiHinweis />
       <ul className="grid gap-3">
         {TOOL_CARDS.map((t) => (

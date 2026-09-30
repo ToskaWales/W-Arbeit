@@ -26,6 +26,12 @@ export const TOOL_CARDS: ToolCard[] = [
     href: "/tools/roter-faden",
   },
   {
+    id: "abschluss",
+    title: "Abschluss-Check",
+    description: "Liest deine ganze Arbeit und listet, was noch nachgebessert werden muss.",
+    href: "/tools/abschluss-check",
+  },
+  {
     id: "kolloquium",
     title: "Kolloquiums-Simulator",
     description: "Übe die Fragen der Prüfung im Gespräch.",
