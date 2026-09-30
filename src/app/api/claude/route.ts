@@ -1,6 +1,6 @@
 import { checkAccess } from "@/lib/access";
 import { getAnthropic } from "@/lib/anthropic";
-import { calculateCostMicroCents, microToCents } from "@/lib/cost";
+import { calculateCostMicroCents, microToCents, type Usage } from "@/lib/cost";
 import { prepareRequest, type ToolInput } from "@/lib/prepare";
 import { BLOCKED_MESSAGE, BUSY_MESSAGE, UNAVAILABLE_MESSAGE, clientKey, isBlocked, recordFailure } from "@/lib/rate-limit";
 import { getStore } from "@/lib/store";
@@ -157,6 +157,19 @@ async function run(
 
   stream.on("text", send);
 
+  // Merkt sich die Verbrauchszahlen während des Streams. Bricht der Stream mittendrin ab, hat Anthropic
+  // die bisherigen Tokens trotzdem berechnet; die buchen wir dann auch (sonst stimmt das Admin-Dashboard nicht).
+  const seen: Usage = { input_tokens: 0, output_tokens: 0 };
+  stream.on("streamEvent", (ev) => {
+    const u =
+      ev.type === "message_start" ? ev.message.usage : ev.type === "message_delta" ? (ev.usage as Partial<Usage>) : null;
+    if (!u) return;
+    for (const k of ["input_tokens", "output_tokens", "cache_creation_input_tokens", "cache_read_input_tokens"] as const) {
+      if (typeof u[k] === "number" && u[k]! > 0) seen[k] = u[k];
+    }
+    if (u.server_tool_use) seen.server_tool_use = u.server_tool_use;
+  });
+
   // Auf das erste Lebenszeichen warten: So können wir einen Fehler noch sauber als Fehlermeldung schicken,
   // statt dass die Verbindung mitten in einer "erfolgreichen" Antwort abreißt.
   const first = new Promise<Error | null>((resolve) => {
@@ -182,6 +195,13 @@ async function run(
     })
     .catch(async (err) => {
       console.error("Claude-Anfrage fehlgeschlagen:", err instanceof Error ? err.message : err);
+      try {
+        if (seen.input_tokens + seen.output_tokens > 0) {
+          await store.addUsage(access.hash, calculateCostMicroCents(prepared.model, seen), Date.now());
+        }
+      } catch (e) {
+        console.error("Teilkosten konnten nicht gebucht werden:", e instanceof Error ? e.message : e);
+      }
       await unlock();
       if (open) controller.error(err);
     });
