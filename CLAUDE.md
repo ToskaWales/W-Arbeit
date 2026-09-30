@@ -134,13 +134,13 @@ Eigene Nutzerkonten mit E-Mail, Bezahlsystem, Speichern von Arbeiten, Rubrik-Fee
 
 ## Checkliste vor Go-live
 
-- [ ] API-Key nur serverseitig, Key nicht im Git-Verlauf
-- [ ] Ausgabenlimit in der Anthropic Console gesetzt
-- [ ] Jede Route prüft den Zugangscode
-- [ ] Admin-Passwort stark, nur per Umgebungsvariable
-- [ ] Jeder Code hat einen Namen, in der Admin-Tabelle überprüft
-- [ ] Codes lassen sich nur als Admin erstellen (per curl ohne Login getestet)
-- [ ] Impressum und Datenschutzerklärung online
-- [ ] KI-Hinweis sichtbar
-- [ ] Test auf Handy und Desktop
-- [ ] Fehlerfall getestet (Budget leer, Code gesperrt, API nicht erreichbar)
+- [x] API-Key nur serverseitig, Key nicht im Git-Verlauf (Test in tests/security.test.ts, Git-Verlauf geprüft)
+- [ ] Ausgabenlimit in der Anthropic Console gesetzt (nur du kannst das)
+- [x] Jede Route prüft den Zugangscode (Test in tests/security.test.ts schlägt bei neuen ungeprüften Routen an)
+- [ ] Admin-Passwort stark, nur per Umgebungsvariable (Server verlangt mindestens 12 Zeichen; auf Vercel eintragen)
+- [x] Jeder Code hat einen Namen, in der Admin-Tabelle überprüft
+- [x] Codes lassen sich nur als Admin erstellen (per curl ohne Login getestet)
+- [ ] Impressum und Datenschutzerklärung online (Seiten fertig; LEGAL_* und UPSTASH_REGION setzen, `npm run check:legal`, Texte rechtlich prüfen lassen)
+- [x] KI-Hinweis sichtbar
+- [ ] Test auf Handy und Desktop (im Handy-Browser-Modus getestet; echtes Gerät fehlt)
+- [x] Fehlerfall getestet (Budget leer, Code gesperrt, API nicht erreichbar)

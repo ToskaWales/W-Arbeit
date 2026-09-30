@@ -2,6 +2,7 @@ import { checkAccess } from "@/lib/access";
 import { getAnthropic } from "@/lib/anthropic";
 import { calculateCostMicroCents, microToCents } from "@/lib/cost";
 import { prepareRequest, type ToolInput } from "@/lib/prepare";
+import { BLOCKED_MESSAGE, BUSY_MESSAGE, UNAVAILABLE_MESSAGE, clientKey, isBlocked, recordFailure } from "@/lib/rate-limit";
 import { getStore } from "@/lib/store";
 import { InputError } from "@/lib/tool-input";
 import { DAILY_REQUEST_LIMIT, PDF_MAX_BYTES } from "@/config/tools";
@@ -33,12 +34,47 @@ async function readBody(request: Request): Promise<{ tool: unknown; input: ToolI
 }
 
 export async function POST(request: Request) {
+  try {
+    return await handle(request);
+  } catch (err) {
+    console.error("Unerwarteter Fehler:", err instanceof Error ? err.message : err);
+    return json(500, UNAVAILABLE_MESSAGE);
+  }
+}
+
+async function handle(request: Request) {
   const store = getStore();
+  const client = clientKey(request);
+  if (await isBlocked(store, "claude", client)) return json(429, BLOCKED_MESSAGE);
+
   // Zuerst prüfen (Code steht im Header), dann erst den Inhalt einlesen.
-  const access = await checkAccess(store, request.headers.get("x-access-code"), DAILY_REQUEST_LIMIT);
-  if (!access.ok) return json(access.status, access.error);
+  const code = request.headers.get("x-access-code");
+  const access = await checkAccess(store, code, DAILY_REQUEST_LIMIT);
+  if (!access.ok) {
+    if (access.status === 401 && code?.trim()) await recordFailure(store, "claude", client); // Raten bremsen
+    return json(access.status, access.error);
+  }
+
+  // Immer nur eine Anfrage pro Code gleichzeitig: verhindert, dass parallele Anfragen das Budget überziehen.
+  if (!(await store.tryLock(access.hash, 75))) return json(429, BUSY_MESSAGE);
+  const unlock = () => store.unlock(access.hash).catch(() => {});
+  try {
+    return await run(request, access, unlock);
+  } catch (err) {
+    await unlock();
+    throw err;
+  }
+}
+
+async function run(
+  request: Request,
+  access: Extract<Awaited<ReturnType<typeof checkAccess>>, { ok: true }>,
+  unlock: () => Promise<void>,
+) {
+  const store = getStore();
 
   if (Number(request.headers.get("content-length") ?? 0) > MAX_BODY_BYTES) {
+    await unlock();
     return json(413, "Die Datei ist zu groß.");
   }
 
@@ -47,12 +83,14 @@ export async function POST(request: Request) {
     const { tool, input } = await readBody(request);
     prepared = await prepareRequest(tool, input);
   } catch (err) {
+    await unlock();
     if (err instanceof InputError) return json(400, err.message);
     return json(400, "Ungültige Anfrage.");
   }
 
   const restMicro = access.record.budgetMicro - access.record.costMicro;
   if (restMicro < prepared.minBudgetMicro) {
+    await unlock();
     return json(402, `Für diese Anfrage braucht dein Budget mindestens ${microToCents(prepared.minBudgetMicro)} Cent. Dein Budget reicht nicht mehr aus.`);
   }
 
@@ -98,18 +136,24 @@ export async function POST(request: Request) {
     .finalMessage()
     .then(async (final) => {
       // Usage steht am Ende des Streams: jetzt Kosten buchen.
-      await store.addUsage(access.hash, calculateCostMicroCents(prepared.model, final.usage), Date.now());
+      try {
+        await store.addUsage(access.hash, calculateCostMicroCents(prepared.model, final.usage), Date.now());
+      } finally {
+        await unlock();
+      }
       if (final.stop_reason === "max_tokens") send("\n\n[Die Antwort wurde wegen des Längenlimits gekürzt.]");
       if (open) controller.close();
     })
-    .catch((err) => {
+    .catch(async (err) => {
       console.error("Claude-Anfrage fehlgeschlagen:", err instanceof Error ? err.message : err);
+      await unlock();
       if (open) controller.error(err);
     });
 
   const failure = await first;
   if (failure) {
     console.error("Claude nicht erreichbar:", failure.message);
+    await unlock();
     return json(502, "Die KI ist gerade nicht erreichbar. Bitte versuche es in ein paar Minuten noch einmal.");
   }
 

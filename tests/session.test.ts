@@ -38,4 +38,15 @@ describe("/api/session", () => {
     await call({ code: CODE });
     expect(await store.incrDaily(hashCode(CODE), new Date().toISOString().slice(0, 10))).toBe(1);
   });
+  it("bremst das Raten von Codes (429) und meldet Speicher-Ausfall sauber", async () => {
+    const withIp = (code: string) =>
+      POST(new Request("http://x", { method: "POST", headers: { "x-forwarded-for": "9.9.9.9" }, body: JSON.stringify({ code }) }));
+    for (let i = 0; i < 20; i++) expect((await withIp(`RATEN${i}`)).status).toBe(401);
+    expect((await withIp(CODE)).status).toBe(429);
+    store.get = async () => {
+      throw new Error("Redis down");
+    };
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    expect((await call({ code: CODE })).status).toBe(500);
+  });
 });

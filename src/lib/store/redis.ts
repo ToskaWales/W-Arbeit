@@ -70,6 +70,19 @@ export class RedisStore implements CodeStore {
     return this.bumpCounter(`daily:${hash}:${dayKey}`, 60 * 60 * 26);
   }
 
+  async getCounter(key: string) {
+    return Number((await this.redis.get<number>(key)) ?? 0);
+  }
+
+  async tryLock(key: string, ttlSeconds: number) {
+    // NX: nur setzen, wenn es die Sperre noch nicht gibt. EX: läuft von selbst ab, falls etwas abstürzt.
+    return (await this.redis.set(`lock:${key}`, 1, { nx: true, ex: ttlSeconds })) === "OK";
+  }
+
+  async unlock(key: string) {
+    await this.redis.del(`lock:${key}`);
+  }
+
   async bumpCounter(key: string, ttlSeconds: number) {
     const n = await this.redis.incr(key);
     if (n === 1) await this.redis.expire(key, ttlSeconds);

@@ -110,9 +110,19 @@ export function AccessProvider({ children }: { children: React.ReactNode }) {
       </header>
       <div className="mx-auto w-full max-w-2xl flex-1 px-4 py-6">{children}</div>
       <footer className="mx-auto w-full max-w-2xl px-4 pb-6 text-xs text-zinc-500">
-        Die KI kann sich irren. Prüfe Angaben nach. Sie hilft dir beim Denken und schreibt deine Arbeit nicht.
+        <p>Die KI kann sich irren. Prüfe Angaben nach. Sie hilft dir beim Denken und schreibt deine Arbeit nicht.</p>
+        <LegalLinks />
       </footer>
     </Ctx.Provider>
+  );
+}
+
+function LegalLinks() {
+  return (
+    <p className="mt-1 flex gap-3">
+      <Link href="/impressum" className="underline">Impressum</Link>
+      <Link href="/datenschutz" className="underline">Datenschutz</Link>
+    </p>
   );
 }
 
@@ -156,6 +166,7 @@ function LoginScreen({ onLogin }: { onLogin: (code: string, restCents: number) =
         {error && <p role="alert" className="text-red-700">{error}</p>}
       </form>
       <p className="mt-6 text-sm text-zinc-500">Du hast noch keinen Code? Frag die Person, die dir den Zugang gegeben hat.</p>
+      <div className="mt-6 text-xs text-zinc-500"><LegalLinks /></div>
     </main>
   );
 }

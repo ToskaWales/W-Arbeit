@@ -41,4 +41,16 @@ export class MemoryStore implements CodeStore {
     this.counters.set(key, n);
     return n;
   }
+  async getCounter(key: string) {
+    return this.counters.get(key) ?? 0;
+  }
+  private locks = new Set<string>();
+  async tryLock(key: string) {
+    if (this.locks.has(key)) return false;
+    this.locks.add(key);
+    return true;
+  }
+  async unlock(key: string) {
+    this.locks.delete(key);
+  }
 }

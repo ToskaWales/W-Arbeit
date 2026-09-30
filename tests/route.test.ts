@@ -7,6 +7,7 @@ const CODE = "ABCD2345EFGH";
 let store: MemoryStore;
 const streamSpy = vi.fn();
 let mode: "ok" | "error" | "max_tokens" = "ok";
+let gate: Promise<void> | null = null;
 
 vi.mock("@/lib/store", () => ({ getStore: () => store }));
 vi.mock("@/lib/anthropic", () => ({
@@ -22,6 +23,7 @@ vi.mock("@/lib/anthropic", () => ({
           once: (e: string, f: (x?: unknown) => void) => (add(e, f), self),
           finalMessage: async () => {
             await Promise.resolve();
+            if (gate) await gate;
             if (mode === "error") {
               emit("error", new Error("API down"));
               throw new Error("API down");
@@ -59,6 +61,7 @@ const ok = (over: object = {}) => ({ code: CODE, tool: "fragestellung", fields: 
 beforeEach(async () => {
   store = new MemoryStore();
   mode = "ok";
+  gate = null;
   streamSpy.mockClear();
   vi.spyOn(console, "error").mockImplementation(() => {});
   await createAccessCode(store, CODE, "Lisa M.", 100 * 1_000_000);
@@ -174,5 +177,55 @@ describe("/api/claude", () => {
       new Request("http://x/api/claude", { method: "POST", headers: { "x-access-code": CODE }, body: "{kaputt" }),
     );
     expect(res.status).toBe(400);
+  });
+
+  it("erlaubt pro Code nur eine Anfrage gleichzeitig (429) und gibt die Sperre danach frei", async () => {
+    let open!: () => void;
+    gate = new Promise<void>((r) => (open = r));
+    const first = call(ok());
+    await vi.waitFor(() => expect(streamSpy).toHaveBeenCalledTimes(1));
+    const second = await call(ok());
+    expect(second.status).toBe(429);
+    expect((await second.json()).error).toContain("warte");
+    expect(streamSpy).toHaveBeenCalledTimes(1);
+    open();
+    await (await first).text();
+    await vi.waitFor(async () => expect((await call(ok())).status).toBe(200));
+  });
+  it("gibt die Sperre auch nach Eingabefehlern, zu wenig Budget und KI-Ausfall frei", async () => {
+    expect((await call(ok({ fields: { ...FIELDS, fach: "" } }))).status).toBe(400);
+    expect((await call(ok())).status).toBe(200);
+    mode = "error";
+    expect((await call(ok())).status).toBe(502);
+    mode = "ok";
+    await vi.waitFor(async () => expect((await call(ok())).status).toBe(200));
+  });
+  it("bremst das Raten von Codes pro Anschluss (429), andere Anschlüsse bleiben frei", async () => {
+    const withIp = (ip: string, code: string) =>
+      POST(
+        new Request("http://x/api/claude", {
+          method: "POST",
+          headers: { "x-access-code": code, "x-forwarded-for": ip, "Content-Type": "application/json" },
+          body: JSON.stringify({ tool: "fragestellung", fields: FIELDS }),
+        }),
+      );
+    for (let i = 0; i < 20; i++) expect((await withIp("1.2.3.4", `RATEN${i}`)).status).toBe(401);
+    const blocked = await withIp("1.2.3.4", CODE);
+    expect(blocked.status).toBe(429);
+    expect((await blocked.json()).error).toContain("Zu viele falsche Codes");
+    await (await withIp("5.6.7.8", CODE)).text(); // anderer Anschluss geht
+    expect(streamSpy).toHaveBeenCalledTimes(1);
+  });
+  it("zählt fehlende Codes nicht als Raten", async () => {
+    for (let i = 0; i < 25; i++) expect((await call({ tool: "fragestellung", fields: FIELDS })).status).toBe(401);
+    expect((await call(ok())).status).toBe(200);
+  });
+  it("meldet Speicher-Ausfall als saubere Fehlermeldung (500)", async () => {
+    store.get = async () => {
+      throw new Error("Redis down");
+    };
+    const res = await call(ok());
+    expect(res.status).toBe(500);
+    expect((await res.json()).error).toContain("nicht erreichbar");
   });
 });

@@ -25,4 +25,8 @@ export interface CodeStore {
   incrDaily(hash: string, dayKey: string): Promise<number>;
   // Allgemeiner Zähler mit Ablaufzeit (z. B. fehlgeschlagene Admin-Logins).
   bumpCounter(key: string, ttlSeconds: number): Promise<number>;
+  getCounter(key: string): Promise<number>;
+  // Sperre gegen parallele Anfragen desselben Codes. true = Sperre erhalten.
+  tryLock(key: string, ttlSeconds: number): Promise<boolean>;
+  unlock(key: string): Promise<void>;
 }

@@ -1,0 +1,55 @@
+import type { Metadata } from "next";
+import { getLegalInfo } from "@/config/legal";
+
+export const metadata: Metadata = { title: "Datenschutzerklärung" };
+export const dynamic = "force-dynamic";
+
+function H({ children }: { children: React.ReactNode }) {
+  return <h2 className="mt-5 text-lg font-semibold">{children}</h2>;
+}
+
+export default function Datenschutz() {
+  const l = getLegalInfo();
+  return (
+    <main className="space-y-3 leading-relaxed">
+      <h1 className="text-2xl font-semibold">Datenschutzerklärung</h1>
+      <p>
+        Hier erfährst du, welche Daten der W-Seminar-Helfer verarbeitet. Kurz gesagt: Wir speichern <strong>keine Inhalte</strong>, also weder deine Texte, deine PDFs noch die Antworten der KI.
+      </p>
+
+      <H>1. Verantwortlicher</H>
+      <p>
+        {l.name}, {l.addressLines.join(", ")}, E-Mail: {l.email}
+      </p>
+
+      <H>2. Was der Dienst macht</H>
+      <p>
+        Der W-Seminar-Helfer bietet Schülerinnen und Schülern feste Werkzeuge, mit denen sie Hilfe für ihre W-Seminararbeit von einer KI bekommen (Fragestellungs-Check, Quellenkritik, Rote-Faden-Check, Kolloquiums-Simulator). Die KI ist ein Sparringspartner und schreibt die Arbeit nicht.
+      </p>
+
+      <H>3. Welche Daten wir verarbeiten</H>
+      <p><strong>a) Zugangscode und Nutzungsdaten.</strong> Für jeden Zugangscode speichern wir nur: einen Hash des Codes (nicht den Code selbst), den vom Betreiber vergebenen Namen, das Budget, die bisherigen Kosten, die Anzahl der Anfragen sowie die Zeitpunkte der Erstellung und der letzten Nutzung. Zweck ist die Zugangskontrolle und die Begrenzung der Kosten. Rechtsgrundlage: Art. 6 Abs. 1 lit. b und f DSGVO (Bereitstellung des Dienstes, berechtigtes Interesse an Kostenkontrolle und Missbrauchsschutz).</p>
+      <p><strong>b) Eingaben und Antworten.</strong> Was du in die Formulare eingibst (auch hochgeladene PDFs und der Gesprächsverlauf im Kolloquium), wird zur Erzeugung der Antwort an die KI-Firma Anthropic übermittelt. Wir speichern diese Inhalte nicht. Der Gesprächsverlauf im Kolloquium liegt nur in deinem Browser und ist weg, wenn du die Seite neu lädst. <strong>Bitte gib keine Namen, Schulnamen oder andere persönliche Daten ein.</strong></p>
+      <p><strong>c) Technische Zugriffsdaten.</strong> Beim Aufruf der Seite verarbeitet unser Hoster (Vercel) technisch notwendige Daten wie IP-Adresse, Zeitpunkt und aufgerufene Adresse in Server-Protokollen. Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO (sicherer und stabiler Betrieb).</p>
+      <p><strong>d) Missbrauchsschutz.</strong> Um das Erraten von Codes zu bremsen, zählen wir fehlgeschlagene Anmeldungen pro Anschluss. Dafür speichern wir nur einen Hash der IP-Adresse für höchstens 15 Minuten, nicht die IP-Adresse selbst.</p>
+      <p><strong>e) Speicher im Browser.</strong> Damit du angemeldet bleibst, speichert dein Browser deinen Zugangscode lokal (Local Storage). Das ist technisch notwendig. Wir setzen keine Cookies zu Werbung oder Reichweitenmessung und nutzen keine Tracking-Dienste. Mit „Abmelden“ löschst du den Code aus deinem Browser. Für die Verwaltungsseite gibt es ein technisch notwendiges Anmelde-Cookie, das nur der Betreiber nutzt.</p>
+
+      <H>4. Empfänger und Übermittlung in Drittländer</H>
+      <ul className="list-disc space-y-1 pl-6">
+        <li>Vercel Inc. (USA): Hosting der Webseite.</li>
+        <li>Upstash (Region der Datenbank: {l.redisRegion}): Speicherung der Zugangsdaten und Zähler aus Punkt 3 a und d.</li>
+        <li>Anthropic PBC (USA): Verarbeitung der Eingaben zur Erzeugung der KI-Antworten. Es gelten zusätzlich die Datenschutzbestimmungen von Anthropic (anthropic.com/privacy).</li>
+      </ul>
+      <p>Bei Anbietern in den USA erfolgt die Übermittlung auf Grundlage der von der EU anerkannten Mechanismen (zum Beispiel Standardvertragsklauseln oder Zertifizierung nach dem EU-US Data Privacy Framework).</p>
+
+      <H>5. Speicherdauer</H>
+      <p>Die Daten aus Punkt 3 a bleiben gespeichert, solange der Dienst betrieben wird, und werden auf Wunsch früher gelöscht. Server-Protokolle löscht der Hoster nach seinen üblichen Fristen. Hashes aus Punkt 3 d verfallen nach 15 Minuten.</p>
+
+      <H>6. Kinder und Jugendliche</H>
+      <p>Der Dienst richtet sich an Schülerinnen und Schüler. Die Zugangscodes werden vom Betreiber persönlich ausgegeben. Bitte sprich mit deinen Eltern oder deiner Lehrkraft, wenn du unsicher bist, ob du den Dienst nutzen möchtest.</p>
+
+      <H>7. Deine Rechte</H>
+      <p>Du hast das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung, Datenübertragbarkeit und Widerspruch. Schreib dazu an die E-Mail-Adresse oben. Außerdem kannst du dich bei einer Datenschutzaufsichtsbehörde beschweren, in Bayern beim Bayerischen Landesamt für Datenschutzaufsicht (lda.bayern.de).</p>
+    </main>
+  );
+}

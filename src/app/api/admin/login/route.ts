@@ -5,6 +5,7 @@ import {
   SESSION_COOKIE,
   SESSION_SECONDS,
 } from "@/lib/admin-auth";
+import { clientKey } from "@/lib/rate-limit";
 import { getStore } from "@/lib/store";
 
 const MAX_ATTEMPTS = 10; // pro IP und 15 Minuten
@@ -15,8 +16,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "Admin-Bereich ist nicht eingerichtet." }, { status: 503 });
   }
 
-  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unbekannt";
-  const attempts = await getStore().bumpCounter(`adminlogin:${ip}`, 15 * 60);
+  const attempts = await getStore().bumpCounter(`adminlogin:${clientKey(request)}`, 15 * 60);
   if (attempts > MAX_ATTEMPTS) {
     return Response.json({ error: "Zu viele Versuche. Warte 15 Minuten." }, { status: 429 });
   }
