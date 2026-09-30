@@ -18,14 +18,14 @@ Aufgabe: Kolloquiums-Simulator. Du übst mit einem Schüler das Prüfungsgesprä
 
   if (phase === "feedback") {
     const luecken = `## Lücken
-Wo waren Antworten vage, ausweichend, unbelegt oder widersprüchlich? Nenne die Stelle konkret.`;
+Wo waren Antworten vage, ausweichend, unbelegt oder widersprüchlich? Höchstens drei Punkte, je ein bis zwei Sätze, mit konkreter Stelle.`;
     if (schreiben) {
       return `${base}
 
 Das Gespräch ist zu Ende. Stelle KEINE weitere Frage. Gib ein ehrliches Abschlussfeedback zu den Antworten des Schülers, mit genau diesen Überschriften (Zeile mit "## " am Anfang):
 
 ## Stärken
-Zwei bis drei Punkte, mit Bezug auf konkrete Antworten.
+Zwei Punkte, je ein bis zwei Sätze, mit Bezug auf konkrete Antworten.
 
 ${luecken}
 
@@ -33,7 +33,7 @@ ${luecken}
 Für die ein bis drei schwächsten Antworten je eine stärkere Beispielantwort in der Ich-Form (drei bis fünf Sätze), die der Schüler als Übungsvorlage nutzen kann. Nenne davor die Frage. Stütze dich nur auf die Kurzfassung und auf das, was der Schüler gesagt hat. Wo ein Beleg fehlt, setze "[Beleg nötig: ...]".
 
 ## Übungstipps
-Zwei bis drei Anregungen zur Vorbereitung.
+Zwei Anregungen zur Vorbereitung, je ein Satz.
 
 Verwende kein Markdown außer den "## "-Überschriften und Stichpunkten mit "- ".`;
     }
@@ -42,12 +42,12 @@ Verwende kein Markdown außer den "## "-Überschriften und Stichpunkten mit "- "
 Das Gespräch ist zu Ende. Stelle KEINE weitere Frage. Gib ein ehrliches Abschlussfeedback zu den Antworten des Schülers, mit genau diesen Überschriften (Zeile mit "## " am Anfang):
 
 ## Stärken
-Zwei bis drei Punkte, mit Bezug auf konkrete Antworten.
+Zwei Punkte, je ein bis zwei Sätze, mit Bezug auf konkrete Antworten.
 
 ${luecken}
 
 ## Übungstipps
-Drei bis vier Anregungen, wie der Schüler sich gezielt vorbereiten kann (zum Beispiel: Begriff X in eigenen Worten erklären, Beleg für Behauptung Y heraussuchen). Formuliere keine Musterantworten.
+Drei Anregungen, je ein bis zwei Sätze, wie der Schüler sich gezielt vorbereiten kann (zum Beispiel: Begriff X in eigenen Worten erklären, Beleg für Behauptung Y heraussuchen). Formuliere keine Musterantworten.
 
 Verwende kein Markdown außer den "## "-Überschriften und Stichpunkten mit "- ".`;
   }

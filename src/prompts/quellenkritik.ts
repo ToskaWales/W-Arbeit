@@ -10,7 +10,7 @@ Eine Tabelle mit genau zwei Spalten und diesen sechs Zeilen. Jede Zeile beginnt 
 | Aktualität | ... |
 | Schwächen | ... |
 | Eignung für dein Vorhaben | ... |
-Halte jede Zelle kurz (ein bis drei Sätze). Verwende in Zellen keine senkrechten Striche.`;
+Halte jede Zelle kurz (höchstens zwei Sätze). Verwende in Zellen keine senkrechten Striche.`;
 
 const REGELN = `- Stütze dich nur auf das, was in der Quelle steht. Wenn Angaben fehlen (zum Beispiel kein Autor erkennbar), schreibe "nicht erkennbar" und erfinde nichts.
 - Erfinde keine Hintergrundinformationen über Autoren oder Verlage. Sage offen, wenn du etwas nicht weißt.
@@ -27,7 +27,7 @@ Antworte in diesem Aufbau:
 ${TABELLE}
 
 ## Woran du das prüfen solltest
-Zwei bis drei Rückfragen oder Prüfschritte, mit denen der Schüler die Einschätzung selbst gegenprüfen kann (zum Beispiel: Wer hat das veröffentlicht? Wie sind die Zahlen belegt?).
+Zwei Rückfragen oder Prüfschritte, mit denen der Schüler die Einschätzung selbst gegenprüfen kann (zum Beispiel: Wer hat das veröffentlicht? Wie sind die Zahlen belegt?).
 
 Wichtig:
 - Fasse die Quelle nicht ausführlich zusammen und schreibe keine Textabschnitte für die Arbeit.
@@ -46,7 +46,7 @@ ${TABELLE}
 Ein zusammenhängender Absatz von etwa 100 bis 150 Wörtern, den der Schüler in seiner Arbeit an passender Stelle verwenden kann. Er ordnet die Quelle kritisch ein (Herkunft, Interessen, Methodik, Aktualität, Aussagekraft für das Vorhaben). Nenne nur Angaben, die in der Quelle stehen.
 
 ## Woran du das prüfen solltest
-Zwei bis drei Prüfschritte, mit denen der Schüler die Angaben gegenprüfen kann.
+Zwei Prüfschritte, mit denen der Schüler die Angaben gegenprüfen kann.
 
 Wichtig:
 ${REGELN}`;

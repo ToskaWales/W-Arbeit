@@ -30,7 +30,7 @@ Antworte in diesem Aufbau (Überschriften mit "## " am Anfang der Zeile):
 Der Text, ohne Einleitungssatz davor.
 
 ## Was du prüfen musst
-Drei bis fünf Stichpunkte: Welche Aussagen brauchen Belege? Was hast du aus den Angaben geschlussfolgert, das der Schüler bestätigen muss? Was passt vielleicht nicht zum eigenen Stil?
+Genau drei Stichpunkte, je ein Satz: Welche Aussagen brauchen Belege? Was hast du aus den Angaben geschlussfolgert, das der Schüler bestätigen muss? Was passt vielleicht nicht zum eigenen Stil?
 
 Verwende im Entwurf kein Markdown außer Absätzen. Fehlen brauchbare Angaben, sag das kurz und bitte um Stichpunkte, statt Inhalt zu erfinden.`;
 }

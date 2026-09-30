@@ -25,6 +25,7 @@ Genau drei Fragen, die der Schüler für sich beantworten soll, um die Fragestel
 Wichtig:
 - Formuliere keine neue Fragestellung und keine Alternativen zum Übernehmen. Der Schüler soll selbst darauf kommen.
 - Sei konkret und ehrlich, aber freundlich. Keine langen Einleitungen.
+- Fasse dich kurz: Jede Stärke ein Satz, jede Schwachstelle höchstens drei Sätze, jede Rückfrage ein Satz.
 - Verwende kein Markdown außer den "## "-Überschriften und nummerierten Listen mit "1." und Stichpunkten mit "- ".
 - Bleibt die Eingabe leer, unsinnig oder hat sie nichts mit einer Schularbeit zu tun, sag das kurz und freundlich und bitte um eine ernsthafte Eingabe.`;
 
@@ -53,4 +54,4 @@ Genau drei ausformulierte Alternativen als nummerierte Liste. Nach jeder Alterna
 ## Nächster Schritt
 Ein bis zwei Sätze: Welche Variante passt wozu, und was sollte der Schüler noch klären?
 
-Verwende kein Markdown außer den "## "-Überschriften, nummerierten Listen mit "1." und Stichpunkten mit "- ". Sei konkret und freundlich, ohne lange Einleitung. Ist die Eingabe leer oder unsinnig, sag das kurz und bitte um eine ernsthafte Eingabe.`;
+Fasse dich kurz: Jede Stärke ein Satz, jede Schwachstelle höchstens drei Sätze, jede Alternative zwei Sätze. Verwende kein Markdown außer den "## "-Überschriften, nummerierten Listen mit "1." und Stichpunkten mit "- ". Sei konkret und freundlich, ohne lange Einleitung. Ist die Eingabe leer oder unsinnig, sag das kurz und bitte um eine ernsthafte Eingabe.`;

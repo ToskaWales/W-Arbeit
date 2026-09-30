@@ -14,6 +14,8 @@ export interface ToolConfig {
   model: ModelId;
   maxTokens: number; // Bei Sonnet zählt das Nachdenken mit, deshalb großzügig.
   effort?: "low" | "medium" | "high";
+  // Günstigeres Modell für kurze Zwischenschritte (nur Kolloquium-Fragen; Haiku kennt kein effort).
+  askModel?: ModelId;
   fields: ToolField[];
   // Mindest-Restbudget in US-Cent, damit eine einzelne Anfrage das Budget nicht weit überzieht.
   minBudgetCents: number;
@@ -23,7 +25,7 @@ export interface ToolConfig {
 export const TOOLS: Record<ToolId, ToolConfig> = {
   fragestellung: {
     model: "claude-sonnet-5-5",
-    maxTokens: 3000,
+    maxTokens: 2500,
     effort: "low",
     minBudgetCents: 3,
     fields: [
@@ -35,7 +37,7 @@ export const TOOLS: Record<ToolId, ToolConfig> = {
   },
   quellenkritik: {
     model: "claude-sonnet-5-5",
-    maxTokens: 3000,
+    maxTokens: 2500,
     effort: "low",
     minBudgetCents: 3,
     fields: [
@@ -45,7 +47,7 @@ export const TOOLS: Record<ToolId, ToolConfig> = {
   },
   "roter-faden": {
     model: "claude-sonnet-5-5",
-    maxTokens: 3000,
+    maxTokens: 2500,
     effort: "low",
     minBudgetCents: 3,
     fields: [
@@ -55,8 +57,9 @@ export const TOOLS: Record<ToolId, ToolConfig> = {
   },
   kolloquium: {
     model: "claude-sonnet-5-5",
-    maxTokens: 2000, // Fragen sind kürzer; die Route senkt das für normale Fragen selbst
+    maxTokens: 1500, // Fragen sind kürzer; prepare.ts setzt dafür questionMaxTokens
     effort: "low",
+    askModel: "claude-haiku-4-5-20251001", // Feedback bleibt bei Sonnet (Haiku hielt sich dort nicht an die Aufgabe)
     minBudgetCents: 5,
     fields: [
       { key: "kurzfassung", label: "Kurzfassung deiner Arbeit", maxChars: 3000, required: true },
@@ -66,7 +69,7 @@ export const TOOLS: Record<ToolId, ToolConfig> = {
   // Nur im Schreibmodus verfügbar (prüft der Server).
   schreibassistent: {
     model: "claude-sonnet-5-5",
-    maxTokens: 4000,
+    maxTokens: 3000,
     effort: "low",
     minBudgetCents: 5,
     fields: [
@@ -92,6 +95,6 @@ export const KOLLOQUIUM = {
   maxAnswerChars: 1500,
   maxQuestionChars: 3000,
   questionMaxTokens: 600,
-  feedbackMaxTokens: 2000,
-  feedbackMaxTokensSchreiben: 3500, // mit Beispielantworten
+  feedbackMaxTokens: 1500,
+  feedbackMaxTokensSchreiben: 2500, // mit Beispielantworten
 };

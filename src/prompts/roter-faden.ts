@@ -1,6 +1,8 @@
 import { GUARDRAILS, GUARDRAILS_SCHREIBEN } from "./guardrails";
 
-const ANALYSE = `## Argumentationssprünge
+const ANALYSE = `Fasse dich kurz: Jeder Punkt höchstens zwei Sätze, pro Abschnitt höchstens drei Punkte.
+
+## Argumentationssprünge
 Stellen, an denen der Gedankengang von einem Kapitel zum nächsten nicht nachvollziehbar ist. Nenne die Kapitel beim Namen und erkläre kurz, was fehlt.
 
 ## Kapitel ohne Bezug zur Fragestellung
@@ -19,7 +21,7 @@ Gliedere deine Antwort genau so, mit diesen Überschriften (Zeile mit "## " am A
 ${ANALYSE}
 
 ## Fragen zur Reihenfolge
-Reihenfolge-Vorschläge nur als Fragen formuliert ("Könnte Kapitel 3 vor Kapitel 2 stehen, weil ...?"). Höchstens fünf.
+Reihenfolge-Vorschläge nur als Fragen formuliert ("Könnte Kapitel 3 vor Kapitel 2 stehen, weil ...?"). Höchstens drei.
 
 Wichtig:
 - Schreibe keine neue Gliederung und keine Kapitelüberschriften zum Übernehmen. Der Schüler soll selbst umbauen.

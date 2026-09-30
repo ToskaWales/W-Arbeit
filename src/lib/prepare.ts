@@ -86,6 +86,7 @@ export async function prepareRequest(toolId: unknown, input: ToolInput): Promise
     }
     return {
       ...base,
+      ...(!feedback && tool.askModel ? { model: tool.askModel, effort: undefined } : {}),
       maxTokens: feedback
         ? mode === "schreiben"
           ? KOLLOQUIUM.feedbackMaxTokensSchreiben

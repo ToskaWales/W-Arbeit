@@ -9,7 +9,8 @@
     "lint": "eslint",
     "test": "vitest run",
     "code:create": "tsx --env-file=.env.local scripts/create-code.ts",
-    "check:legal": "tsx --env-file=.env.local scripts/check-legal.ts"
+    "check:legal": "tsx --env-file=.env.local scripts/check-legal.ts",
+    "measure": "tsx --env-file=.env.local scripts/measure-costs.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.129.0",
