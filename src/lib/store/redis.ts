@@ -1,4 +1,5 @@
 import { Redis } from "@upstash/redis";
+import { withMarkup } from "../cost";
 import type { CodePatch, CodeRecord, CodeStore } from "./types";
 
 const codeKey = (hash: string) => `code:${hash}`;
@@ -9,10 +10,13 @@ function toRecord(d: Record<string, string | number> | null): CodeRecord | null 
     name: String(d.name),
     budgetMicro: Number(d.budgetMicro),
     costMicro: Number(d.costMicro),
+    // Ältere Datensätze ohne verrechneten Betrag: nachträglich mit Aufschlag berechnen
+    chargedMicro: d.chargedMicro === undefined ? withMarkup(Number(d.costMicro)) : Number(d.chargedMicro),
     requests: Number(d.requests),
     active: Number(d.active) === 1,
     createdAt: Number(d.createdAt),
     lastUsedAt: Number(d.lastUsedAt) || null,
+    hidden: Number(d.hidden) === 1,
   };
 }
 
@@ -24,10 +28,12 @@ export class RedisStore implements CodeStore {
       name: r.name,
       budgetMicro: r.budgetMicro,
       costMicro: r.costMicro,
+      chargedMicro: r.chargedMicro,
       requests: r.requests,
       active: r.active ? 1 : 0,
       createdAt: r.createdAt,
       lastUsedAt: r.lastUsedAt ?? 0,
+      hidden: r.hidden ? 1 : 0,
     });
     await this.redis.sadd("codes", hash);
   }
@@ -53,6 +59,7 @@ export class RedisStore implements CodeStore {
     const p = this.redis.pipeline();
     if (patch.name !== undefined) p.hset(codeKey(hash), { name: patch.name });
     if (patch.active !== undefined) p.hset(codeKey(hash), { active: patch.active ? 1 : 0 });
+    if (patch.hidden !== undefined) p.hset(codeKey(hash), { hidden: patch.hidden ? 1 : 0 });
     if (patch.addBudgetMicro) p.hincrby(codeKey(hash), "budgetMicro", Math.round(patch.addBudgetMicro));
     await p.exec();
     return this.get(hash);
@@ -61,6 +68,7 @@ export class RedisStore implements CodeStore {
   async addUsage(hash: string, costMicro: number, now: number) {
     const p = this.redis.pipeline();
     p.hincrby(codeKey(hash), "costMicro", Math.round(costMicro));
+    p.hincrby(codeKey(hash), "chargedMicro", withMarkup(costMicro));
     p.hincrby(codeKey(hash), "requests", 1);
     p.hset(codeKey(hash), { lastUsedAt: now });
     await p.exec();

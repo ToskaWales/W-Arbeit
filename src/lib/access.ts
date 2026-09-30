@@ -36,7 +36,7 @@ export async function checkAccess(
   const found = await lookupCode(store, code);
   if (!found.ok) return found;
   const { hash, record } = found;
-  if (record.budgetMicro - record.costMicro <= 0) {
+  if (record.budgetMicro - record.chargedMicro <= 0) {
     return { ok: false, status: 402, error: "Dein Budget ist aufgebraucht." };
   }
   const count = await store.incrDaily(hash, dayKey(now));
@@ -60,9 +60,11 @@ export async function createAccessCode(
     name: cleanName,
     budgetMicro,
     costMicro: 0,
+    chargedMicro: 0,
     requests: 0,
     active: true,
     createdAt: now,
     lastUsedAt: null,
+    hidden: false,
   });
 }

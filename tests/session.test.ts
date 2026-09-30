@@ -16,10 +16,10 @@ beforeEach(async () => {
 
 describe("/api/session", () => {
   it("liefert das Restbudget", async () => {
-    await store.addUsage(hashCode(CODE), 50 * 1_000_000, 1);
+    await store.addUsage(hashCode(CODE), 50 * 1_000_000, 1); // 50 Cent echte Kosten = 55 Cent verrechnet
     const res = await call({ code: CODE });
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ restCents: 150 });
+    expect(await res.json()).toEqual({ restCents: 145 });
   });
   it("zeigt bei leerem Budget 0 an, lässt aber die Anmeldung zu", async () => {
     await store.addUsage(hashCode(CODE), 250 * 1_000_000, 1);

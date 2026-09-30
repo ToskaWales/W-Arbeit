@@ -1,16 +1,19 @@
 export interface CodeRecord {
   name: string;
   budgetMicro: number;
-  costMicro: number;
+  costMicro: number; // ECHTE API-Kosten (nur der Admin sieht sie)
+  chargedMicro: number; // verrechnet an den Schüler: echte Kosten plus Aufschlag. Das Guthaben sinkt um diesen Betrag.
   requests: number;
   active: boolean;
   createdAt: number;
   lastUsedAt: number | null;
+  hidden: boolean; // im Admin ausgeblendet (Archiv), ändert nichts am Zugang
 }
 
 export interface CodePatch {
   name?: string;
   active?: boolean;
+  hidden?: boolean;
   addBudgetMicro?: number;
 }
 

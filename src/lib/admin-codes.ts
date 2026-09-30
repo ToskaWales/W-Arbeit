@@ -30,6 +30,11 @@ export async function setActive(store: CodeStore, hash: string, active: unknown)
   return store.update(hash, { active });
 }
 
+export async function setHidden(store: CodeStore, hash: string, hidden: unknown) {
+  if (typeof hidden !== "boolean") throw new Error("hidden muss true oder false sein.");
+  return store.update(hash, { hidden });
+}
+
 // Umbenennen ja, leeren Namen nie.
 export async function renameCode(store: CodeStore, hash: string, name: unknown) {
   return store.update(hash, { name: normalizeName(name) });
@@ -40,9 +45,13 @@ export function toRow(hash: string, r: CodeRecord) {
     id: hash,
     name: r.name,
     budgetCents: microToCents(r.budgetMicro),
-    costCents: microToCents(r.costMicro),
+    chargedCents: microToCents(r.chargedMicro), // verrechnet: das sieht auch der Schüler
+    restCents: microToCents(r.budgetMicro - r.chargedMicro),
+    costCents: microToCents(r.costMicro), // echte API-Kosten, nur im Admin
+    profitCents: microToCents(r.chargedMicro - r.costMicro),
     requests: r.requests,
     active: r.active,
+    hidden: r.hidden,
     createdAt: r.createdAt,
     lastUsedAt: r.lastUsedAt,
   };

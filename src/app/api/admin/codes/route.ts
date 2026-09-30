@@ -1,5 +1,6 @@
 import { createCodeForName, toRow } from "@/lib/admin-codes";
 import { requireAdmin } from "@/lib/admin-guard";
+import { MARKUP_PERCENT } from "@/config/pricing";
 import { getStore } from "@/lib/store";
 
 export async function GET(request: Request) {
@@ -7,7 +8,8 @@ export async function GET(request: Request) {
   if (denied) return denied;
   const rows = (await getStore().list()).map(({ hash, record }) => toRow(hash, record));
   rows.sort((a, b) => b.createdAt - a.createdAt);
-  return Response.json({ codes: rows });
+  // Der Aufschlag wird nur hier ausgeliefert (nach Admin-Login) und steckt nie im Code, den jeder Besucher laden kann.
+  return Response.json({ codes: rows, markupPercent: MARKUP_PERCENT });
 }
 
 export async function POST(request: Request) {

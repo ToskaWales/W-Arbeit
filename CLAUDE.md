@@ -54,13 +54,18 @@ Dahinter steckt die Claude API.
 - **Nur der Admin kann Codes erstellen.** Es gibt keine Selbstregistrierung, keinen öffentlichen Endpunkt und keine Möglichkeit,
   dass ein Nutzer weitere Codes erzeugt. Alle Endpunkte zum Erstellen, Ändern, Aufladen und Sperren von Codes prüfen
   serverseitig die Admin-Anmeldung und antworten sonst mit 401/403.
-- Datensatz pro Code: Name (Pflicht), Budget in Cent, bisherige Kosten, Anzahl Anfragen, aktiv ja/nein, erstellt am, zuletzt genutzt.
+- Datensatz pro Code: Name (Pflicht), Budget in Cent (= Guthaben des Schülers), **echte API-Kosten**, **verrechneter Betrag** (echte Kosten + Aufschlag),
+  Anzahl Anfragen, aktiv ja/nein, ausgeblendet ja/nein, erstellt am, zuletzt genutzt.
+- **Aufschlag:** `MARKUP_PERCENT` (10 %, `src/config/pricing.ts`) auf die echten Kosten ist der Gewinn des Betreibers. Beim Buchen wird der verrechnete Betrag
+  gespeichert; das Guthaben sinkt um diesen Betrag. **Schüler sehen und bekommen nur den verrechneten Betrag** (Restbudget), nie echte Kosten oder Gewinn.
+  Ältere Datensätze ohne verrechneten Betrag werden beim Lesen mit dem Aufschlag berechnet.
 - Kosten pro Anfrage aus dem `usage`-Feld der API-Antwort berechnen (Input, Output, ggf. Cache-Tokens).
   Beim Streaming steht `usage` am Ende des Streams.
 - Vor jeder Anfrage: Restbudget prüfen. Ein leichtes Überschreiten durch die letzte Anfrage ist akzeptabel.
 - Zusätzlich: Tageslimit an Anfragen pro Code (Redis-Zähler mit Ablaufzeit).
 - **Admin-Seite** `/admin` (Passwort aus `ADMIN_PASSWORD`, Sitzung per sicherem, HttpOnly-Cookie): Code für einen Namen erstellen,
-  Budget aufladen, sperren/entsperren, Tabelle mit Name, Kosten, Budget, Anfragen, zuletzt genutzt.
+  Budget aufladen, sperren/entsperren, **Nutzer ausblenden/einblenden** (Archiv, ohne Wirkung auf den Zugang), Tabelle mit Name, Guthaben, Verbraucht (verrechnet), Rest,
+  echten Kosten, Gewinn, Anfragen, zuletzt genutzt, dazu Summen (verbraucht, echte Kosten, Gewinn, offenes Guthaben aktiver Codes).
   Die Seite ist für Nicht-Admins nicht erreichbar und nicht verlinkt.
 - Im UI sieht der Nutzer sein Restbudget.
 
@@ -137,6 +142,10 @@ System-Prompts liegen in `src/prompts/` (eine Datei pro Tool), damit ich sie lei
   KI-Hinweis (Hinweis auf Selbstständigkeitserklärung und Offenlegung der KI-Nutzung), Hinweis "keine Namen eingeben"
 - Fertig, wenn: Checkliste unten komplett abgehakt
 
+**M8 Aufschlag und Auswertung im Admin**
+- 10 % Aufschlag beim Buchen, Nutzer sehen nur den verrechneten Betrag, Admin sieht echte Kosten und Gewinn samt Summen, Nutzer ausblenden
+- Fertig, wenn: eine echte Anfrage im Admin verrechnet (echt +10 %) erscheint, der Nutzer nur sein Restbudget sieht, Tests laufen
+
 **M7 Seminararbeit-Bereich und Tool-Verbund**
 - Bereich „Meine Seminararbeit“ (verschlüsselt auf dem Server) mit Fahrplan in 7 Schritten: Fragestellung, Quellen, Gliederung/Roter Faden, Kapitel schreiben,
   Abschluss-Check, Nachbessern, Kolloquium. Tools füllen sich aus der Arbeit und übernehmen Ergebnisse per Klick zurück.
@@ -181,6 +190,7 @@ Eigene Nutzerkonten mit E-Mail, Bezahlsystem, Rubrik-Feedback, Zeitplan-Tracker,
 - [x] KI-Hinweis sichtbar
 - [ ] `WORK_ENCRYPTION_KEY` erzeugt (`openssl rand -base64 32`), in Vercel gesetzt und sicher gesichert
 - [ ] Auftragsverarbeitungsverträge mit Vercel, Upstash und Anthropic abgeschlossen, Datenschutzerklärung rechtlich geprüft (Arbeit wird jetzt gespeichert)
+- [ ] Geschäftliches geklärt, weil du Guthaben mit Aufschlag verkaufst: Gewerbe/Steuern, AGB und Preisangaben, Verträge mit Minderjährigen (Zustimmung der Eltern)
 - [ ] Websuche in der Anthropic Console für die Organisation freigeschaltet (Quellensuche)
 - [ ] Test auf Handy und Desktop (im Handy-Browser-Modus getestet; echtes Gerät fehlt)
 - [x] Fehlerfall getestet (Budget leer, Code gesperrt, API nicht erreichbar)

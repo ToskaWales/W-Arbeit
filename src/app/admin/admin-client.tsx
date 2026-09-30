@@ -1,14 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { summarize } from "@/lib/admin-summary";
 
 interface Row {
   id: string;
   name: string;
   budgetCents: number;
-  costCents: number;
+  chargedCents: number; // verrechnet, das sieht auch der Schüler
+  restCents: number;
+  costCents: number; // echte API-Kosten
+  profitCents: number;
   requests: number;
   active: boolean;
+  hidden: boolean;
   createdAt: number;
   lastUsedAt: number | null;
 }
@@ -34,11 +39,14 @@ export default function AdminClient() {
   const [name, setName] = useState("");
   const [budget, setBudget] = useState("500");
   const [newCode, setNewCode] = useState<{ name: string; code: string } | null>(null);
+  const [showHidden, setShowHidden] = useState(false);
+  const [markup, setMarkup] = useState<number | null>(null);
 
   const apply = useCallback((r: Awaited<ReturnType<typeof api>>) => {
     if (r.status === 401) setState("login");
     else if (r.ok) {
       setRows(r.data.codes);
+      setMarkup(r.data.markupPercent ?? null);
       setState("in");
     }
   }, []);
@@ -106,6 +114,10 @@ export default function AdminClient() {
     if (v) await patch(row.id, { name: v });
   }
 
+  const summary = useMemo(() => summarize(rows), [rows]);
+  const hiddenCount = rows.filter((r) => r.hidden).length;
+  const visible = showHidden ? rows : rows.filter((r) => !r.hidden);
+
   const input = "rounded border border-zinc-300 bg-white px-3 py-2 text-black";
   const btn = "rounded bg-zinc-900 px-3 py-2 text-white disabled:opacity-50";
   const small = "rounded border border-zinc-400 px-2 py-1 text-sm";
@@ -152,17 +164,41 @@ export default function AdminClient() {
         <div className="mb-4 rounded border border-green-700 bg-green-50 p-3 text-black">
           Code für <strong>{newCode.name}</strong>: <code className="text-lg font-bold">{newCode.code}</code>
           <p className="text-sm">Wird nur jetzt einmal angezeigt. Jetzt kopieren und weitergeben.</p>
-          <button className={`${small} mt-2`} onClick={() => setNewCode(null)}>Ausblenden</button>
+          <button className={`${small} mt-2`} onClick={() => setNewCode(null)}>Schließen</button>
         </div>
       )}
 
+      <section aria-label="Auswertung" className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {[
+          ["Verbraucht (verrechnet)", summary.chargedCents, "Das sehen die Nutzer."],
+          ["Echte API-Kosten", summary.costCents, "Das zahlst du an Anthropic."],
+          ["Gewinn", summary.profitCents, "Verrechnet minus echte Kosten."],
+          ["Offenes Guthaben", summary.openCents, "Noch nicht verbraucht (nur aktive Codes)."],
+        ].map(([label, value, hint]) => (
+          <div key={label as string} className="rounded border border-zinc-300 bg-white p-3">
+            <p className="text-xs text-zinc-600">{label as string}</p>
+            <p className="text-lg font-semibold">{fmt(value as number)} Cent</p>
+            <p className="text-xs text-zinc-500">{hint as string}</p>
+          </div>
+        ))}
+      </section>
+      <p className="mb-2 text-xs text-zinc-500">Alle Summen über alle {summary.codes} Codes (auch ausgeblendete). Aufschlag: {markup ?? "…"} % auf die echten Kosten. US-Cent.</p>
+
+      <label className="mb-2 flex items-center gap-2 text-sm">
+        <input type="checkbox" checked={showHidden} onChange={(e) => setShowHidden(e.target.checked)} />
+        Ausgeblendete Nutzer anzeigen ({hiddenCount})
+      </label>
+
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[720px] text-left text-sm">
+        <table className="w-full min-w-[980px] text-left text-sm">
           <thead>
             <tr className="border-b border-zinc-400">
               <th className="p-2">Name</th>
-              <th className="p-2">Kosten (Cent)</th>
-              <th className="p-2">Budget (Cent)</th>
+              <th className="p-2">Guthaben</th>
+              <th className="p-2">Verbraucht</th>
+              <th className="p-2">Rest</th>
+              <th className="p-2">Echte Kosten</th>
+              <th className="p-2">Gewinn</th>
               <th className="p-2">Anfragen</th>
               <th className="p-2">Zuletzt genutzt</th>
               <th className="p-2">Status</th>
@@ -170,24 +206,28 @@ export default function AdminClient() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
-              <tr key={r.id} className="border-b border-zinc-200">
-                <td className="p-2 font-medium">{r.name}</td>
-                <td className="p-2">{fmt(r.costCents)}</td>
+            {visible.map((r) => (
+              <tr key={r.id} className={`border-b border-zinc-200 ${r.hidden ? "bg-zinc-100 text-zinc-500" : ""}`}>
+                <td className="p-2 font-medium">{r.name}{r.hidden && " (ausgeblendet)"}</td>
                 <td className="p-2">{fmt(r.budgetCents)}</td>
+                <td className="p-2">{fmt(r.chargedCents)}</td>
+                <td className="p-2">{fmt(r.restCents)}</td>
+                <td className="p-2">{fmt(r.costCents)}</td>
+                <td className="p-2">{fmt(r.profitCents)}</td>
                 <td className="p-2">{r.requests}</td>
                 <td className="p-2">{fmtDate(r.lastUsedAt)}</td>
                 <td className="p-2">{r.active ? "aktiv" : "gesperrt"}</td>
                 <td className="flex flex-wrap gap-1 p-2">
                   <button className={small} onClick={() => topUp(r)}>Aufladen</button>
                   <button className={small} onClick={() => patch(r.id, { active: !r.active })}>{r.active ? "Sperren" : "Entsperren"}</button>
+                  <button className={small} onClick={() => patch(r.id, { hidden: !r.hidden })}>{r.hidden ? "Einblenden" : "Ausblenden"}</button>
                   <button className={small} onClick={() => rename(r)}>Umbenennen</button>
                   <button className={small} onClick={() => arbeitLoeschen(r)}>Arbeit löschen</button>
                 </td>
               </tr>
             ))}
-            {rows.length === 0 && (
-              <tr><td className="p-2 text-zinc-600" colSpan={7}>Noch keine Codes.</td></tr>
+            {visible.length === 0 && (
+              <tr><td className="p-2 text-zinc-600" colSpan={10}>{rows.length === 0 ? "Noch keine Codes." : "Alle Nutzer sind ausgeblendet."}</td></tr>
             )}
           </tbody>
         </table>

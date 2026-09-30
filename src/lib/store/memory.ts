@@ -1,3 +1,4 @@
+import { withMarkup } from "../cost";
 import type { CodePatch, CodeRecord, CodeStore } from "./types";
 
 export class MemoryStore implements CodeStore {
@@ -20,6 +21,7 @@ export class MemoryStore implements CodeStore {
     if (!r) return null;
     if (patch.name !== undefined) r.name = patch.name;
     if (patch.active !== undefined) r.active = patch.active;
+    if (patch.hidden !== undefined) r.hidden = patch.hidden;
     if (patch.addBudgetMicro) r.budgetMicro += patch.addBudgetMicro;
     return { ...r };
   }
@@ -27,6 +29,7 @@ export class MemoryStore implements CodeStore {
     const r = this.records.get(hash);
     if (!r) return;
     r.costMicro += costMicro;
+    r.chargedMicro += withMarkup(costMicro);
     r.requests += 1;
     r.lastUsedAt = now;
   }

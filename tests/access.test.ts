@@ -54,7 +54,9 @@ describe("Zugangsprüfung", () => {
     expect(await checkAccess(store, CODE, 10)).toMatchObject({ ok: false, status: 402 });
   });
   it("erlaubt Anfrage bei knappem Restbudget (leichtes Überschreiten akzeptiert)", async () => {
-    await store.addUsage(hashCode(CODE), 499_999_999, Date.now());
+    // Das Guthaben sinkt um den verrechneten Betrag (echte Kosten + 10 %), also bleibt bei diesen Kosten noch ein Rest.
+    await store.addUsage(hashCode(CODE), 454_545_454, Date.now());
+    expect((await store.get(hashCode(CODE)))!.chargedMicro).toBe(499_999_999);
     expect((await checkAccess(store, CODE, 10)).ok).toBe(true);
   });
   it("lehnt nach Erreichen des Tageslimits mit 429 ab, am nächsten Tag geht es wieder", async () => {

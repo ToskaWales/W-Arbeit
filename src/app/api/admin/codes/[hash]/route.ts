@@ -1,4 +1,4 @@
-import { addBudget, renameCode, setActive, toRow } from "@/lib/admin-codes";
+import { addBudget, renameCode, setActive, setHidden, toRow } from "@/lib/admin-codes";
 import { requireAdmin } from "@/lib/admin-guard";
 import { getStore } from "@/lib/store";
 
@@ -9,7 +9,7 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ hash: str
   const store = getStore();
   if (!(await store.get(hash))) return Response.json({ error: "Code nicht gefunden." }, { status: 404 });
 
-  let body: { name?: unknown; active?: unknown; addCents?: unknown };
+  let body: { name?: unknown; active?: unknown; hidden?: unknown; addCents?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -18,6 +18,7 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ hash: str
   try {
     if (body.name !== undefined) await renameCode(store, hash, body.name);
     if (body.active !== undefined) await setActive(store, hash, body.active);
+    if (body.hidden !== undefined) await setHidden(store, hash, body.hidden);
     if (body.addCents !== undefined) await addBudget(store, hash, body.addCents);
   } catch (err) {
     return Response.json({ error: err instanceof Error ? err.message : "Fehler." }, { status: 400 });

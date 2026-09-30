@@ -91,6 +91,14 @@ describe("Admin-Endpunkte mit Login", () => {
     expect(JSON.stringify(list)).not.toContain(code);
     expect(list.codes[0]).toMatchObject({ name: "Lisa M.", budgetCents: 250, costCents: 0, active: true });
   });
+  it("liefert den Aufschlag nur nach dem Login mit der Liste", async () => {
+    const cookie = await adminCookie();
+    const body = await (await codes.GET(req("GET", undefined, cookie))).json();
+    expect(body.markupPercent).toBe(10);
+    const ohne = await codes.GET(req("GET"));
+    expect(ohne.status).toBe(401);
+    expect(JSON.stringify(await ohne.json())).not.toMatch(/markup|10/);
+  });
   it("zeigt Kosten beim richtigen Namen", async () => {
     const cookie = await adminCookie();
     const a = await (await codes.POST(req("POST", { name: "Lisa", budgetCents: 100 }, cookie))).json();

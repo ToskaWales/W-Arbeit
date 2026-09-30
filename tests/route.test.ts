@@ -320,7 +320,7 @@ describe("/api/claude mit gespeicherter Arbeit und Websuche", () => {
     await vi.waitFor(async () => expect((await store.get(hashCode(CODE)))!.costMicro).toBe(2_700_000));
   });
   it("Websuche verlangt 15 Cent Restbudget; andere Tools bekommen kein Suchwerkzeug", async () => {
-    await store.addUsage(hashCode(CODE), 90 * 1_000_000, 1); // 10 Cent übrig
+    await store.addUsage(hashCode(CODE), 80 * 1_000_000, 1); // 88 Cent verrechnet, 12 Cent übrig
     const res = await call({ code: CODE, tool: "quellensuche", fields: { suchauftrag: "x" } });
     expect(res.status).toBe(402);
     expect(streamSpy).not.toHaveBeenCalled();

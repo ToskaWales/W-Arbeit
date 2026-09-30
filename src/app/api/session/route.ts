@@ -24,7 +24,7 @@ export async function POST(request: Request) {
       }
       return Response.json({ error: found.error }, { status: found.status });
     }
-    const rest = found.record.budgetMicro - found.record.costMicro;
+    const rest = found.record.budgetMicro - found.record.chargedMicro;
     return Response.json({ restCents: Math.max(0, microToCents(rest)) });
   } catch (err) {
     console.error("Unerwarteter Fehler:", err instanceof Error ? err.message : err);

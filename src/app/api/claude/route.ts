@@ -109,7 +109,7 @@ async function run(
     return json(400, "Ungültige Anfrage.");
   }
 
-  const restMicro = access.record.budgetMicro - access.record.costMicro;
+  const restMicro = access.record.budgetMicro - access.record.chargedMicro;
   if (restMicro < prepared.minBudgetMicro) {
     await unlock();
     return json(402, `Für diese Anfrage braucht dein Budget mindestens ${microToCents(prepared.minBudgetMicro)} Cent. Dein Budget reicht nicht mehr aus.`);

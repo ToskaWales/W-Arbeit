@@ -1,3 +1,4 @@
+import { MARKUP_PERCENT } from "../config/pricing";
 import { MODEL_PRICES, WEB_SEARCH_CENTS_PER_REQUEST, type ModelId } from "../config/models";
 
 export interface Usage {
@@ -27,4 +28,9 @@ export function calculateCostMicroCents(model: ModelId, usage: Usage): number {
 
 export function microToCents(micro: number): number {
   return micro / MICRO_PER_CENT;
+}
+
+// Verrechneter Betrag für den Schüler: echte Kosten plus Aufschlag (ganze Mikro-Cent, kaufmännisch gerundet).
+export function withMarkup(costMicro: number): number {
+  return Math.round(costMicro + (costMicro * MARKUP_PERCENT) / 100);
 }

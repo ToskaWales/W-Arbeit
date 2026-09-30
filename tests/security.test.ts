@@ -53,7 +53,7 @@ describe("Checkliste: Keine Geheimnisse im Browser-Code", () => {
     for (const f of client) {
       const src = read(f);
       expect(src, rel(f)).not.toMatch(/ANTHROPIC|ADMIN_PASSWORD|KV_REST|UPSTASH_REDIS|LEGAL_/);
-      expect(src, rel(f)).not.toMatch(/@\/lib\/(anthropic|store|admin-auth|admin-guard|access|codes)|@anthropic-ai|@upstash|node:crypto/);
+      expect(src, rel(f)).not.toMatch(/@\/lib\/(anthropic|store|admin-auth|admin-guard|access|codes|cost)|@\/config\/pricing|@anthropic-ai|@upstash|node:crypto/);
     }
   });
   it("der API-Key wird nur in der Server-Datei anthropic.ts behandelt", () => {
