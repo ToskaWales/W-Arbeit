@@ -2,6 +2,7 @@ import { checkAccess } from "@/lib/access";
 import { getAnthropic } from "@/lib/anthropic";
 import { calculateCostMicroCents, microToCents } from "@/lib/cost";
 import { getStore } from "@/lib/store";
+import { buildUserMessage, InputError } from "@/lib/tool-input";
 import { DAILY_REQUEST_LIMIT, TOOLS, type ToolId } from "@/config/tools";
 import { SYSTEM_PROMPTS } from "@/prompts";
 
@@ -12,7 +13,7 @@ function json(status: number, error: string) {
 }
 
 export async function POST(request: Request) {
-  let body: { code?: unknown; tool?: unknown; input?: unknown };
+  let body: { code?: unknown; tool?: unknown; fields?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -28,9 +29,12 @@ export async function POST(request: Request) {
   if (typeof toolId !== "string" || !Object.hasOwn(TOOLS, toolId)) return json(400, "Unbekanntes Tool.");
   const tool = TOOLS[toolId];
 
-  if (typeof body.input !== "string" || body.input.trim() === "") return json(400, "Bitte gib etwas ein.");
-  if (body.input.length > tool.maxInputChars) {
-    return json(413, `Die Eingabe ist zu lang (maximal ${tool.maxInputChars} Zeichen).`);
+  let userMessage: string;
+  try {
+    userMessage = buildUserMessage(tool, body.fields);
+  } catch (err) {
+    if (err instanceof InputError) return json(400, err.message);
+    throw err;
   }
 
   const stream = getAnthropic().messages.stream({
@@ -38,37 +42,60 @@ export async function POST(request: Request) {
     max_tokens: tool.maxTokens,
     system: SYSTEM_PROMPTS[toolId],
     ...(tool.effort ? { output_config: { effort: tool.effort } } : {}),
-    // Nutzereingabe als Daten markieren (Schutz vor Prompt Injection).
-    messages: [{ role: "user", content: `<nutzereingabe>\n${body.input}\n</nutzereingabe>` }],
+    messages: [{ role: "user", content: userMessage }],
   });
 
   const encoder = new TextEncoder();
-  const body$ = new ReadableStream({
-    async start(controller) {
-      let open = true;
-      stream.on("text", (text) => {
-        if (!open) return;
-        try {
-          controller.enqueue(encoder.encode(text));
-        } catch {
-          open = false; // Browser hat die Verbindung beendet; wir buchen trotzdem die Kosten.
-        }
-      });
-      try {
-        const final = await stream.finalMessage();
-        // Usage steht am Ende des Streams: jetzt Kosten buchen.
-        await store.addUsage(access.hash, calculateCostMicroCents(tool.model, final.usage), Date.now());
-      } catch (err) {
-        console.error("Claude-Anfrage fehlgeschlagen:", err instanceof Error ? err.message : err);
-        if (open) controller.error(err);
-        return;
-      }
-      if (open) controller.close();
+  let open = true;
+  let controller!: ReadableStreamDefaultController<Uint8Array>;
+  const readable = new ReadableStream<Uint8Array>({
+    start(c) {
+      controller = c;
+    },
+    cancel() {
+      open = false; // Browser hat die Verbindung beendet; wir buchen trotzdem die Kosten.
     },
   });
+  const send = (text: string) => {
+    if (!open) return;
+    try {
+      controller.enqueue(encoder.encode(text));
+    } catch {
+      open = false;
+    }
+  };
+
+  stream.on("text", send);
+
+  // Auf das erste Lebenszeichen warten: So können wir einen Fehler noch sauber als Fehlermeldung schicken,
+  // statt dass die Verbindung mitten in einer "erfolgreichen" Antwort abreißt.
+  const first = new Promise<Error | null>((resolve) => {
+    stream.once("text", () => resolve(null));
+    stream.once("end", () => resolve(null));
+    stream.once("error", (e) => resolve(e));
+  });
+
+  stream
+    .finalMessage()
+    .then(async (final) => {
+      // Usage steht am Ende des Streams: jetzt Kosten buchen.
+      await store.addUsage(access.hash, calculateCostMicroCents(tool.model, final.usage), Date.now());
+      if (final.stop_reason === "max_tokens") send("\n\n[Die Antwort wurde wegen des Längenlimits gekürzt.]");
+      if (open) controller.close();
+    })
+    .catch((err) => {
+      console.error("Claude-Anfrage fehlgeschlagen:", err instanceof Error ? err.message : err);
+      if (open) controller.error(err);
+    });
+
+  const failure = await first;
+  if (failure) {
+    console.error("Claude nicht erreichbar:", failure.message);
+    return json(502, "Die KI ist gerade nicht erreichbar. Bitte versuche es in ein paar Minuten noch einmal.");
+  }
 
   const restCent = microToCents(access.record.budgetMicro - access.record.costMicro);
-  return new Response(body$, {
+  return new Response(readable, {
     headers: {
       "Content-Type": "text/plain; charset=utf-8",
       "Cache-Control": "no-store",
