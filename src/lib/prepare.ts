@@ -1,6 +1,6 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { DEFAULT_MODE, MODES, type Mode } from "../config/mode";
-import { KOLLOQUIUM, PDF_MIN_BUDGET_CENTS, TOOLS, type ToolId } from "../config/tools";
+import { ABSCHLUSS_KAPITEL_MIN_BUDGET_CENTS, ABSCHLUSS_KAPITEL_MIN_CHARS, KOLLOQUIUM, PDF_MIN_BUDGET_CENTS, TOOLS, type ToolId } from "../config/tools";
 import type { ModelId } from "../config/models";
 import { kolloquiumPrompt, type Difficulty } from "../prompts/kolloquium";
 import { SYSTEM_PROMPTS } from "../prompts";
@@ -145,6 +145,29 @@ export async function prepareRequest(toolId: unknown, input: ToolInput): Promise
   }
 
   if (id === "abschluss") {
+    const kapitelId = typeof rawFields?.kapitelId === "string" ? rawFields.kapitelId.trim() : "";
+    if (kapitelId) {
+      // Nur ein Kapitel im Zusammenhang mit Fragestellung, Gliederung und Quellenliste prüfen
+      const kapitel = work?.kapitel.find((k) => k.id === kapitelId);
+      if (!work || !kapitel) throw new InputError("Das gewählte Kapitel gibt es nicht mehr.");
+      if (kapitel.text.trim().length < ABSCHLUSS_KAPITEL_MIN_CHARS) {
+        throw new InputError("Dieses Kapitel ist noch zu kurz für eine Prüfung (mindestens etwa 100 Zeichen).");
+      }
+      const fokus = typeof rawFields?.fokus === "string" && rawFields.fokus.trim() ? rawFields.fokus.trim() : "alles";
+      const message = buildUserMessage(tool, { fokus }, [
+        ...ctxThema(work),
+        ...ctxGliederung(work),
+        ...ctxQuellenTitel(work, 30),
+        `Zu prüfen ist nur dieses Kapitel: „${clean(kapitel.titel) || "ohne Titel"}“`,
+        clean(kapitel.text),
+      ]);
+      return {
+        ...base,
+        minBudgetMicro: ABSCHLUSS_KAPITEL_MIN_BUDGET_CENTS * MICRO_PER_CENT,
+        system: SYSTEM_PROMPTS[mode].abschluss,
+        messages: [{ role: "user", content: message }],
+      };
+    }
     if (!work || kapitelCharCount(work) < 200) {
       throw new InputError("Für den Abschluss-Check brauche ich geschriebene Kapitel in deiner Seminararbeit (mindestens etwa 200 Zeichen).");
     }

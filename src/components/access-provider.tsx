@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ModeSwitch } from "./mode-switch";
+import { clearToolState } from "@/lib/tool-store";
 import { WorkProvider } from "./work-provider";
 import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore } from "react";
 
@@ -90,12 +91,13 @@ export function AccessProvider({ children }: { children: React.ReactNode }) {
   }, [code]);
 
   const logout = useCallback(() => {
+    clearToolState(); // Ergebnisse und Eingaben der Tools sind nur für diese Sitzung da
     setRestCents(null);
     setStoredCode(null);
   }, []);
 
   if (code === undefined) return <p className="p-6 text-zinc-600">Lade …</p>;
-  if (!code) return <LoginScreen onLogin={(c, rest) => (setRestCents(rest), setStoredCode(c))} />;
+  if (!code) return <LoginScreen onLogin={(c, rest) => (clearToolState(), setRestCents(rest), setStoredCode(c))} />;
 
   return (
     <Ctx.Provider value={{ code, restCents, refreshBudget, logout }}>

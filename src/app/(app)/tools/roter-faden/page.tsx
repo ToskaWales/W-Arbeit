@@ -7,6 +7,7 @@ import { ModeNote } from "@/components/mode-note";
 import { useMode } from "@/components/mode-store";
 import { ResultView } from "@/components/result-view";
 import { useToolStream } from "@/components/use-tool-stream";
+import { useStoredForm, useStoredValue } from "@/components/use-stored";
 import { useWork } from "@/components/work-provider";
 import { TOOLS } from "@/config/tools";
 import { parseGliederungVorschlag, stripGliederungNotes } from "@/lib/answer-parse";
@@ -23,9 +24,9 @@ export default function RoterFadenPage() {
 function Form({ initial }: { initial: { fragestellung: string; gliederung: string } }) {
   const [mode] = useMode();
   const { work, update } = useWork();
-  const { phase, answer, error, busy, run } = useToolStream();
-  const [fields, setFields] = useState(initial);
-  const [mitTexten, setMitTexten] = useState(false);
+  const { phase, answer, error, busy, run } = useToolStream("roter-faden");
+  const [fields, setFields] = useStoredForm("roter-faden:fields", initial);
+  const [mitTexten, setMitTexten] = useStoredValue("roter-faden:mit", false);
   const [gespeichert, setGespeichert] = useState(false);
   const resultRef = useRef<HTMLDivElement>(null);
   const geschriebeneKapitel = work.kapitel.filter((k) => k.text.trim()).length;

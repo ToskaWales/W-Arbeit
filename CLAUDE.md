@@ -96,7 +96,7 @@ Gemeinsame Guardrail-Blöcke, die in **jedem** System-Prompt stehen (eine Datei 
    - Eingabe: Kurzfassung der Arbeit (Text), Schwierigkeitsgrad (freundlich / normal / streng)
    - Ablauf: echter Chat, eine Frage nach der anderen, bei schwachen Antworten gezielter nachhaken,
      nach max. 10 Fragen oder Klick auf "Beenden" ein Abschlussfeedback (Stärken, Lücken, Übungstipps)
-   - Chatverlauf nur im Browser halten und pro Anfrage mitschicken. Kosten wachsen mit Länge, daher Limit.
+   - Chatverlauf nur im Browser halten (Session Storage, bis Tab schließen/Abmelden) und pro Anfrage mitschicken. Kosten wachsen mit Länge, daher Limit.
    - *Schreibmodus:* Die KI bleibt Prüfer; das Abschlussfeedback enthält zusätzlich Beispielantworten.
 5. **Schreibassistent** (nur im Schreibmodus, der Server lehnt ihn sonst ab)
    - Eingabe: Aufgabe (Einleitung / Abschnitt / Überleitung / Fazit / Überarbeiten), Länge (kurz/mittel/lang),
@@ -141,6 +141,13 @@ System-Prompts liegen in `src/prompts/` (eine Datei pro Tool), damit ich sie lei
 - Rate Limits, Dateigrößen-Prüfung, `max_tokens`, saubere Fehlertexte, Impressum, Datenschutzerklärung,
   KI-Hinweis (Hinweis auf Selbstständigkeitserklärung und Offenlegung der KI-Nutzung), Hinweis "keine Namen eingeben"
 - Fertig, wenn: Checkliste unten komplett abgehakt
+
+**M9 Tokens sparen**
+- Stand pro Tool (Eingaben, Ergebnis, laufender Abruf, Kolloquium-Chat) bleibt im Browser erhalten (`src/lib/tool-store.ts`, Session Storage, beim Abmelden gelöscht);
+  gleiche Eingabe wird nicht ohne Rückfrage doppelt berechnet; laufender Abruf wird nicht doppelt gestartet
+- Antworten deutlich kürzer (Längenvorgaben pro Abschnitt, Grundregel „so knapp wie möglich“), außer Texte zum Übernehmen im Schreibmodus
+- Quellensuche mit einer Suche; Abschluss-Check auch für ein einzelnes Kapitel
+- Fertig, wenn: `npm run measure` zeigt die Einsparung, Tests laufen, im Browser belegt (keine neue Anfrage beim Zurückgehen)
 
 **M8 Aufschlag und Auswertung im Admin**
 - 10 % Aufschlag beim Buchen, Nutzer sehen nur den verrechneten Betrag, Admin sieht echte Kosten und Gewinn samt Summen, Nutzer ausblenden

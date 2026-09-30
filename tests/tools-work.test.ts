@@ -127,13 +127,46 @@ describe("Tools mit Arbeit", () => {
   });
   it("Quellensuche erlaubt die Websuche, kennt die Quellenliste und verlangt einen Auftrag", async () => {
     const r = await prepareRequest("quellensuche", { fields: { suchauftrag: "Belege zur Inflation", schwacheQuelle: "Blog B" }, work: work() });
-    expect(r.webSearchMaxUses).toBe(2);
-    expect(r.minBudgetMicro).toBe(15_000_000);
+    expect(r.webSearchMaxUses).toBe(1);
+    expect(r.minBudgetMicro).toBe(10_000_000);
     expect(msg(r)).toContain("Buch A");
     expect(r.system).toContain("nur Quellen");
     await expect(prepareRequest("quellensuche", { fields: { suchauftrag: " " } })).rejects.toThrow(/Wofür/);
     const normal = await prepareRequest("fragestellung", { fields: { fach: "a", thema: "b", fragestellung: "c", zeitraum: "d" } });
     expect(normal.webSearchMaxUses).toBeUndefined();
+  });
+});
+
+describe("Abschluss-Check für ein einzelnes Kapitel", () => {
+  const w = () => work({ kapitel: [{ id: "k1", titel: "Einleitung", text: lang }, { id: "k2", titel: "Hauptteil", text: "Ein sehr langer Text im Hauptteil. ".repeat(50) }, { id: "k3", titel: "Fazit", text: "kurz" }] });
+  it("liest nur das gewählte Kapitel plus Fragestellung, Gliederung und Quellen", async () => {
+    const r = await prepareRequest("abschluss", { fields: { kapitelId: "k1" }, work: w() });
+    const m = msg(r);
+    expect(m).toContain("Zu prüfen ist nur dieses Kapitel: „Einleitung“");
+    expect(m).toContain("Fragestellung der Arbeit");
+    expect(m).toContain("Gliederung der Arbeit");
+    expect(m).toContain("Buch A");
+    expect(m).not.toContain("Ein sehr langer Text im Hauptteil"); // andere Kapitel bleiben draußen und kosten nichts
+    expect(m).not.toContain("kapitelId");
+    expect(m).not.toMatch(/k1/);
+  });
+  it("ist deutlich günstiger: kleineres Mindestbudget, viel kürzere Eingabe", async () => {
+    const einzeln = await prepareRequest("abschluss", { fields: { kapitelId: "k1" }, work: w() });
+    const alles = await prepareRequest("abschluss", { fields: {}, work: w() });
+    expect(einzeln.minBudgetMicro).toBe(5_000_000);
+    expect(alles.minBudgetMicro).toBe(15_000_000);
+    expect(msg(einzeln).length).toBeLessThan(msg(alles).length);
+  });
+  it("lehnt unbekannte und zu kurze Kapitel ab; zu kurze Arbeit blockiert die Einzelprüfung nicht", async () => {
+    await expect(prepareRequest("abschluss", { fields: { kapitelId: "weg" }, work: w() })).rejects.toThrow(/nicht mehr/);
+    await expect(prepareRequest("abschluss", { fields: { kapitelId: "k3" }, work: w() })).rejects.toThrow(/zu kurz/);
+    await expect(prepareRequest("abschluss", { fields: { kapitelId: "k1" } })).rejects.toThrow(/nicht mehr/);
+    // 400 Zeichen Einleitung sind zu wenig für die ganze Arbeit (200 gefordert wären ok), aber die Einzelprüfung geht
+    expect((await prepareRequest("abschluss", { fields: { kapitelId: "k1" }, work: work({ kapitel: [{ id: "k1", titel: "E", text: "x".repeat(120) }] }) })).messages).toHaveLength(1);
+  });
+  it("der Prompt weist auf die Einzelprüfung hin", async () => {
+    const r = await prepareRequest("abschluss", { fields: { kapitelId: "k1" }, work: w() });
+    expect(r.system).toContain("nur ein einzelnes Kapitel");
   });
 });
 

@@ -8,6 +8,7 @@ import { ModeNote } from "@/components/mode-note";
 import { useMode } from "@/components/mode-store";
 import { ResultView } from "@/components/result-view";
 import { useToolStream } from "@/components/use-tool-stream";
+import { useStoredForm, useStoredValue } from "@/components/use-stored";
 import { newId, useWork } from "@/components/work-provider";
 import { PDF_MAX_BYTES, PDF_MAX_PAGES, PDF_MIN_BUDGET_CENTS, TOOLS } from "@/config/tools";
 import { WORK_LIMITS } from "@/config/work";
@@ -37,14 +38,17 @@ function Kritik() {
   const { restCents } = useAccess();
   const [modus] = useMode();
   const { work, update } = useWork();
-  const { phase, answer, error, busy, run } = useToolStream();
-  const [art, setArt] = useState<"pdf" | "text">("pdf");
-  const [verwendung, setVerwendung] = useState("");
-  const [text, setText] = useState("");
+  const { phase, answer, error, busy, run } = useToolStream("quellenkritik");
+  // Eingaben bleiben beim Verlassen der Seite erhalten. Nur die PDF-Datei selbst kann der Browser nicht merken.
+  const [k, setK] = useStoredValue("quellenkritik:kritik", { art: "pdf" as "pdf" | "text", verwendung: "", text: "", quelleId: "", titel: "" });
+  const { art, verwendung, text, quelleId, titel } = k;
+  const setArt = (v: "pdf" | "text") => setK((p) => ({ ...p, art: v }));
+  const setVerwendung = (v: string) => setK((p) => ({ ...p, verwendung: v }));
+  const setText = (v: string) => setK((p) => ({ ...p, text: v }));
+  const setQuelleId = (v: string) => setK((p) => ({ ...p, quelleId: v }));
+  const setTitel = (v: string) => setK((p) => ({ ...p, titel: v }));
   const [file, setFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState("");
-  const [quelleId, setQuelleId] = useState("");
-  const [titel, setTitel] = useState("");
   const resultRef = useRef<HTMLDivElement>(null);
   const quellen = work.quellen.filter((q) => q.status !== "verworfen");
 
@@ -178,9 +182,14 @@ function Kritik() {
 function Suche() {
   const { restCents } = useAccess();
   const { work, update } = useWork();
-  const { phase, answer, error, treffer, busy, run } = useToolStream();
-  const [suchauftrag, setSuchauftrag] = useState(work.fragestellung ? `Belege für meine Fragestellung: ${work.fragestellung}`.slice(0, maxSuche.suchauftrag) : "");
-  const [schwache, setSchwache] = useState("");
+  const { phase, answer, error, treffer, busy, run } = useToolStream("quellensuche");
+  const [s, setS] = useStoredForm("quellenkritik:suche", {
+    suchauftrag: work.fragestellung ? `Belege für meine Fragestellung: ${work.fragestellung}`.slice(0, maxSuche.suchauftrag) : "",
+    schwache: "",
+  });
+  const { suchauftrag, schwache } = s;
+  const setSuchauftrag = (v: string) => setS((p) => ({ ...p, suchauftrag: v }));
+  const setSchwache = (v: string) => setS((p) => ({ ...p, schwache: v }));
   const resultRef = useRef<HTMLDivElement>(null);
   const zuWenig = restCents !== null && restCents < SUCHE_MIN_CENTS;
 
@@ -204,7 +213,7 @@ function Suche() {
     <section aria-label="Bessere Quellen suchen">
       <h2 className="mb-1 text-xl font-semibold">Bessere Quellen suchen</h2>
       <p className="mb-4 text-zinc-600">
-        Die KI durchsucht das Internet nach verlässlichen Quellen (höchstens zwei Suchen). Du bekommst echte Fundstellen mit Link, die du selbst öffnen und prüfen musst. Das kostet mehr Budget: etwa 8 bis 12 Cent, du brauchst mindestens {SUCHE_MIN_CENTS} Cent Restbudget.
+        Die KI durchsucht das Internet einmal nach verlässlichen Quellen. Du bekommst echte Fundstellen mit Link, die du selbst öffnen und prüfen musst. Das kostet mehr Budget: etwa 5 bis 8 Cent, du brauchst mindestens {SUCHE_MIN_CENTS} Cent Restbudget. Ein zweiter Durchlauf mit derselben Eingabe wird dir vorher angezeigt, damit du nichts doppelt bezahlst.
       </p>
       <form onSubmit={submit} className="flex flex-col gap-4">
         <label className="flex flex-col gap-1">

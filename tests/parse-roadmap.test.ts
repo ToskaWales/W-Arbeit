@@ -146,6 +146,11 @@ describe("Offene Punkte", () => {
     const neu = ersetzeOffenePunkte([punkt("Schon erledigt", "abschluss", true)], "abschluss", ["  neu \n eins ", "neu eins", "", "schon ERLEDIGT"], id);
     expect(neu.map((p) => p.text)).toEqual(["Schon erledigt", "neu eins"]);
   });
+  it("ergänzt auf Wunsch nur und entfernt nichts (Prüfung eines einzelnen Kapitels)", () => {
+    const alt = [punkt("[Kapitel 2] alt offen", "abschluss"), punkt("[Kapitel 3] auch offen", "abschluss")];
+    const neu = ersetzeOffenePunkte(alt, "abschluss", ["[Kapitel 1] neu", "[Kapitel 2] alt offen"], id, true);
+    expect(neu.map((p) => p.text)).toEqual(["[Kapitel 2] alt offen", "[Kapitel 3] auch offen", "[Kapitel 1] neu"]);
+  });
   it("hält die Höchstgrenzen ein", () => {
     const viele = Array.from({ length: WORK_LIMITS.maxPunkte + 20 }, (_, i) => `Punkt ${i}`);
     expect(ersetzeOffenePunkte([], "kolloquium", viele, id)).toHaveLength(WORK_LIMITS.maxPunkte);

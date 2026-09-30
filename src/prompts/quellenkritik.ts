@@ -10,7 +10,7 @@ Eine Tabelle mit genau zwei Spalten und diesen sechs Zeilen. Jede Zeile beginnt 
 | Aktualität | ... |
 | Schwächen | ... |
 | Eignung für dein Vorhaben | ... |
-Halte jede Zelle kurz (höchstens zwei Sätze). Verwende in Zellen keine senkrechten Striche.`;
+Halte jede Zelle kurz (höchstens 20 Wörter). Verwende in Zellen keine senkrechten Striche.`;
 
 const REGELN = `- Ist die Fragestellung der Arbeit angegeben, beurteile die Eignung für genau diese Fragestellung.
 - Stütze dich nur auf das, was in der Quelle steht. Wenn Angaben fehlen (zum Beispiel kein Autor erkennbar), schreibe "nicht erkennbar" und erfinde nichts.
@@ -28,7 +28,7 @@ Antworte in diesem Aufbau:
 ${TABELLE}
 
 ## Woran du das prüfen solltest
-Zwei Rückfragen oder Prüfschritte, mit denen der Schüler die Einschätzung selbst gegenprüfen kann (zum Beispiel: Wer hat das veröffentlicht? Wie sind die Zahlen belegt?).
+Zwei Prüfschritte mit je höchstens 20 Wörtern, mit denen der Schüler die Einschätzung selbst gegenprüfen kann.
 
 Wichtig:
 - Fasse die Quelle nicht ausführlich zusammen und schreibe keine Textabschnitte für die Arbeit.
@@ -44,10 +44,10 @@ Antworte in diesem Aufbau:
 ${TABELLE}
 
 ## Vorschlag für einen Absatz zur Quellenkritik
-Ein zusammenhängender Absatz von etwa 100 bis 150 Wörtern, den der Schüler in seiner Arbeit an passender Stelle verwenden kann. Er ordnet die Quelle kritisch ein (Herkunft, Interessen, Methodik, Aktualität, Aussagekraft für das Vorhaben). Nenne nur Angaben, die in der Quelle stehen.
+Ein zusammenhängender Absatz von etwa 80 bis 100 Wörtern, den der Schüler in seiner Arbeit an passender Stelle verwenden kann. Er ordnet die Quelle kritisch ein (Herkunft, Interessen, Methodik, Aktualität, Aussagekraft für das Vorhaben). Nenne nur Angaben, die in der Quelle stehen.
 
 ## Woran du das prüfen solltest
-Zwei Prüfschritte, mit denen der Schüler die Angaben gegenprüfen kann.
+Zwei Prüfschritte mit je höchstens 20 Wörtern.
 
 Wichtig:
 ${REGELN}`;

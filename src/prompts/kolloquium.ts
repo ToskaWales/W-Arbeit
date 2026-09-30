@@ -18,22 +18,22 @@ Aufgabe: Kolloquiums-Simulator. Du übst mit einem Schüler das Prüfungsgesprä
 
   if (phase === "feedback") {
     const luecken = `## Lücken
-Wo waren Antworten vage, ausweichend, unbelegt oder widersprüchlich? Höchstens drei Punkte, je ein bis zwei Sätze, mit konkreter Stelle.`;
+Wo waren Antworten vage, ausweichend, unbelegt oder widersprüchlich? Höchstens drei Punkte mit je höchstens 25 Wörtern, mit konkreter Stelle.`;
     if (schreiben) {
       return `${base}
 
 Das Gespräch ist zu Ende. Stelle KEINE weitere Frage. Gib ein ehrliches Abschlussfeedback zu den Antworten des Schülers, mit genau diesen Überschriften (Zeile mit "## " am Anfang):
 
 ## Stärken
-Zwei Punkte, je ein bis zwei Sätze, mit Bezug auf konkrete Antworten.
+Zwei Punkte mit je höchstens 20 Wörtern, mit Bezug auf konkrete Antworten.
 
 ${luecken}
 
 ## Beispielantworten
-Für die ein bis drei schwächsten Antworten je eine stärkere Beispielantwort in der Ich-Form (drei bis fünf Sätze), die der Schüler als Übungsvorlage nutzen kann. Nenne davor die Frage. Stütze dich nur auf die Kurzfassung und auf das, was der Schüler gesagt hat. Wo ein Beleg fehlt, setze "[Beleg nötig: ...]".
+Für die ein bis zwei schwächsten Antworten je eine stärkere Beispielantwort in der Ich-Form (zwei bis drei Sätze), die der Schüler als Übungsvorlage nutzen kann. Nenne davor die Frage. Stütze dich nur auf die Kurzfassung und auf das, was der Schüler gesagt hat. Wo ein Beleg fehlt, setze "[Beleg nötig: ...]".
 
 ## Übungstipps
-Zwei Anregungen zur Vorbereitung, je ein Satz.
+Zwei Anregungen mit je höchstens 20 Wörtern.
 
 Verwende kein Markdown außer den "## "-Überschriften und Stichpunkten mit "- ".`;
     }
@@ -42,19 +42,19 @@ Verwende kein Markdown außer den "## "-Überschriften und Stichpunkten mit "- "
 Das Gespräch ist zu Ende. Stelle KEINE weitere Frage. Gib ein ehrliches Abschlussfeedback zu den Antworten des Schülers, mit genau diesen Überschriften (Zeile mit "## " am Anfang):
 
 ## Stärken
-Zwei Punkte, je ein bis zwei Sätze, mit Bezug auf konkrete Antworten.
+Zwei Punkte mit je höchstens 20 Wörtern, mit Bezug auf konkrete Antworten.
 
 ${luecken}
 
 ## Übungstipps
-Drei Anregungen, je ein bis zwei Sätze, wie der Schüler sich gezielt vorbereiten kann (zum Beispiel: Begriff X in eigenen Worten erklären, Beleg für Behauptung Y heraussuchen). Formuliere keine Musterantworten.
+Drei Anregungen mit je höchstens 20 Wörtern, wie der Schüler sich gezielt vorbereiten kann (zum Beispiel: Begriff X in eigenen Worten erklären, Beleg für Behauptung Y heraussuchen). Formuliere keine Musterantworten.
 
 Verwende kein Markdown außer den "## "-Überschriften und Stichpunkten mit "- ".`;
   }
 
   return `${base}
 
-Stelle in jeder Antwort genau EINE Frage, kurz und klar. Maximal ${maxQuestions} Fragen im ganzen Gespräch.
+Stelle in jeder Antwort genau EINE Frage, höchstens zwei Sätze und höchstens 40 Wörter insgesamt. Maximal ${maxQuestions} Fragen im ganzen Gespräch.
 - Erste Antwort: Begrüße den Schüler in einem Satz und stelle die erste Frage zur Kurzfassung.
 - Danach: Reagiere auf die letzte Antwort höchstens mit einem kurzen, neutralen Satz und stelle dann die nächste Frage. Ist die Antwort schwach (vage, ausweichend, ohne Beleg, widersprüchlich), hake gezielt nach, statt das Thema zu wechseln.
 - Sage dem Schüler nicht die richtige Antwort vor und lobe oder bewerte nicht ausführlich. Die Auswertung kommt erst am Ende.

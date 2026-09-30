@@ -1,6 +1,6 @@
 import { GUARDRAILS, GUARDRAILS_SCHREIBEN } from "./guardrails";
 
-const ANALYSE = `Fasse dich kurz: Jeder Punkt höchstens zwei Sätze, pro Abschnitt höchstens drei Punkte. Sind Auszüge aus geschriebenen Kapiteln angegeben, prüfe auch, ob sie zur Gliederung und zur Fragestellung passen.
+const ANALYSE = `Fasse dich kurz: Jeder Punkt höchstens 25 Wörter. Höchstens drei Punkte bei Argumentationssprüngen und Zwischenschritten, höchstens zwei bei Kapiteln ohne Bezug. Sind Auszüge aus geschriebenen Kapiteln angegeben, prüfe auch, ob sie zur Gliederung und zur Fragestellung passen.
 
 ## Argumentationssprünge
 Stellen, an denen der Gedankengang von einem Kapitel zum nächsten nicht nachvollziehbar ist. Nenne die Kapitel beim Namen und erkläre kurz, was fehlt.
@@ -21,7 +21,7 @@ Gliedere deine Antwort genau so, mit diesen Überschriften (Zeile mit "## " am A
 ${ANALYSE}
 
 ## Fragen zur Reihenfolge
-Reihenfolge-Vorschläge nur als Fragen formuliert ("Könnte Kapitel 3 vor Kapitel 2 stehen, weil ...?"). Höchstens drei.
+Reihenfolge-Vorschläge nur als Fragen formuliert ("Könnte Kapitel 3 vor Kapitel 2 stehen, weil ...?"). Höchstens zwei, je höchstens 20 Wörter.
 
 Wichtig:
 - Schreibe keine neue Gliederung und keine Kapitelüberschriften zum Übernehmen. Der Schüler soll selbst umbauen.
@@ -39,9 +39,9 @@ Gliedere deine Antwort genau so, mit diesen Überschriften (Zeile mit "## " am A
 ${ANALYSE}
 
 ## Vorschlag für eine überarbeitete Gliederung
-Eine vollständige Gliederung mit Nummerierung (1, 1.1, ...). Hinter jedem Punkt nach einem Gedankenstrich ein Halbsatz, was das Kapitel zur Antwort auf die Fragestellung beiträgt.
+Eine vollständige Gliederung mit Nummerierung (1, 1.1, ...). Hinter jedem Punkt nach einem Gedankenstrich ein Halbsatz mit höchstens 8 Wörtern, was das Kapitel zur Antwort auf die Fragestellung beiträgt.
 
 ## Was sich geändert hat
-Drei bis sechs Stichpunkte: Was wurde verschoben, ergänzt oder gestrichen, und warum?
+Höchstens fünf Stichpunkte mit je höchstens 12 Wörtern: Was wurde verschoben, ergänzt oder gestrichen, und warum?
 
 Verwende kein Markdown außer den "## "-Überschriften und Stichpunkten mit "- ". Sei konkret und freundlich, ohne lange Einleitung. Ist die Eingabe leer oder unsinnig, sag das kurz und bitte um eine ernsthafte Eingabe.`;

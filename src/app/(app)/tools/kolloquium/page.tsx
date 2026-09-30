@@ -8,6 +8,7 @@ import { useMode } from "@/components/mode-store";
 import { Spinner } from "@/components/result-view";
 import { ApplyButton } from "@/components/apply-button";
 import { useToolStream } from "@/components/use-tool-stream";
+import { useStoredValue } from "@/components/use-stored";
 import { newId, useWork } from "@/components/work-provider";
 import { parseLuecken } from "@/lib/answer-parse";
 import { ersetzeOffenePunkte } from "@/lib/punkte";
@@ -36,15 +37,25 @@ export default function KolloquiumPage() {
 function Kolloquium({ initialKurzfassung }: { initialKurzfassung: string }) {
   const { work, update } = useWork();
   const [mode] = useMode();
-  const { phase, answer, error, busy, run, reset } = useToolStream();
-  const [stage, setStage] = useState<Stage>("setup");
-  const [kurzfassung, setKurzfassung] = useState(initialKurzfassung);
+  const { phase, answer, error, busy, run, reset } = useToolStream("kolloquium");
+  // Das ganze Gespräch (Eingaben, Fragen, Antworten, Feedback) bleibt beim Verlassen der Seite erhalten.
+  const [s, setS] = useStoredValue("kolloquium:gespraech", {
+    stage: "setup" as Stage,
+    kurzfassung: initialKurzfassung,
+    schwierigkeit: "normal" as (typeof LEVELS)[number]["value"],
+    turns: [] as Turn[],
+    reply: "",
+    feedback: "",
+  });
+  const { stage, kurzfassung, schwierigkeit, turns, reply, feedback } = s;
+  const setStage = (v: Stage) => setS((p) => ({ ...p, stage: v }));
+  const setKurzfassung = (v: string) => setS((p) => ({ ...p, kurzfassung: v }));
+  const setSchwierigkeit = (v: (typeof LEVELS)[number]["value"]) => setS((p) => ({ ...p, schwierigkeit: v }));
+  const setTurns = (v: Turn[]) => setS((p) => ({ ...p, turns: v }));
+  const setReply = (v: string) => setS((p) => ({ ...p, reply: v }));
+  const setFeedback = (v: string) => setS((p) => ({ ...p, feedback: v }));
   const [kurzGespeichert, setKurzGespeichert] = useState(false);
   const hatStruktur = !!(work.fragestellung.trim() && work.gliederung.trim());
-  const [schwierigkeit, setSchwierigkeit] = useState<(typeof LEVELS)[number]["value"]>("normal");
-  const [turns, setTurns] = useState<Turn[]>([]);
-  const [reply, setReply] = useState("");
-  const [feedback, setFeedback] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
 
   const fields = { kurzfassung, schwierigkeit };
@@ -169,7 +180,7 @@ function Kolloquium({ initialKurzfassung }: { initialKurzfassung: string }) {
     <main>
       {header}
       <p className="mb-4 text-sm text-zinc-600">
-        {stage === "chat" ? `Frage ${Math.min(questions, KOLLOQUIUM.maxQuestions)} von ${KOLLOQUIUM.maxQuestions}` : "Gespräch beendet"} · Der Verlauf bleibt nur in deinem Browser. Wenn du die Seite neu lädst, ist er weg.
+        {stage === "chat" ? `Frage ${Math.min(questions, KOLLOQUIUM.maxQuestions)} von ${KOLLOQUIUM.maxQuestions}` : "Gespräch beendet"} · Der Verlauf bleibt nur in deinem Browser, bis du den Tab schließt oder dich abmeldest.
       </p>
 
       <ol className="flex flex-col gap-3" aria-label="Gespräch">

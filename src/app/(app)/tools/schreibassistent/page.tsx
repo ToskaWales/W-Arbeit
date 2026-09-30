@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { ApplyButton } from "@/components/apply-button";
 import { ModeNote } from "@/components/mode-note";
 import { useMode } from "@/components/mode-store";
 import { ResultView } from "@/components/result-view";
 import { useToolStream } from "@/components/use-tool-stream";
+import { useStoredForm, useStoredValue } from "@/components/use-stored";
 import { newId, useWork } from "@/components/work-provider";
 import { TOOLS } from "@/config/tools";
 import { WORK_LIMITS } from "@/config/work";
@@ -48,9 +49,9 @@ export default function SchreibassistentPage() {
 
 function Form() {
   const { work, update } = useWork();
-  const { phase, answer, error, busy, run } = useToolStream();
-  const [f, setF] = useState({ aufgabe: "Einleitung", laenge: "mittel", fragestellung: work.fragestellung, inhalt: "", text: "", kapitelId: "" });
-  const [punktId, setPunktId] = useState("");
+  const { phase, answer, error, busy, run } = useToolStream("schreibassistent");
+  const [f, setF] = useStoredForm("schreibassistent:felder", { aufgabe: "Einleitung", laenge: "mittel", fragestellung: work.fragestellung, inhalt: "", text: "", kapitelId: "" });
+  const [punktId, setPunktId] = useStoredValue("schreibassistent:punkt", "");
   const resultRef = useRef<HTMLDivElement>(null);
 
   const kapitel = work.kapitel.find((k) => k.id === f.kapitelId);

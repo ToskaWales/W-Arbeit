@@ -7,6 +7,7 @@ import { ModeNote } from "@/components/mode-note";
 import { useMode } from "@/components/mode-store";
 import { ResultView } from "@/components/result-view";
 import { useToolStream } from "@/components/use-tool-stream";
+import { useStoredForm } from "@/components/use-stored";
 import { useWork } from "@/components/work-provider";
 import { TOOLS } from "@/config/tools";
 import { parseFragestellungVorschlaege } from "@/lib/answer-parse";
@@ -24,8 +25,8 @@ export default function FragestellungPage() {
 function Form({ initial }: { initial: { fach: string; thema: string; fragestellung: string; zeitraum: string } }) {
   const [mode] = useMode();
   const { update } = useWork();
-  const { phase, answer, error, busy, run } = useToolStream();
-  const [fields, setFields] = useState(initial);
+  const { phase, answer, error, busy, run } = useToolStream("fragestellung");
+  const [fields, setFields] = useStoredForm("fragestellung:fields", initial);
   const [gespeichert, setGespeichert] = useState(false);
   const resultRef = useRef<HTMLDivElement>(null);
 
