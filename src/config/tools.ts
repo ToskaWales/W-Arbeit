@@ -139,3 +139,15 @@ export const KOLLOQUIUM = {
   feedbackMaxTokens: 1000,
   feedbackMaxTokensSchreiben: 1600, // mit Beispielantworten
 };
+
+// Gesprächsmodus: Diese Tools laufen nach der ersten Antwort als Chat weiter, bis der Schüler ein Ergebnis bestätigt.
+// (Das Kolloquium ist ein eigener Chat mit eigenen Limits, die Quellensuche eine einzelne Suche.)
+export const CHAT_TOOLS = ["fragestellung", "quellenkritik", "roter-faden", "schreibassistent", "abschluss"] as const;
+export type ChatToolId = (typeof CHAT_TOOLS)[number];
+
+export const CHAT = {
+  maxUserTurns: 10, // Nachrichten des Schülers pro Gespräch (Kostenbremse, gilt serverseitig)
+  maxUserChars: 4000, // lang genug für eine ganze Gliederung
+  maxAssistantChars: 12000, // erste Antwort (z. B. langer Entwurf) wird zurückgeschickt
+  followMinBudgetCents: 3, // Folgerunden sind kurz und brauchen nicht das große Mindestbudget
+};

@@ -2,11 +2,10 @@
 
 import Link from "next/link";
 import { useRef, useState } from "react";
-import { ApplyButton } from "@/components/apply-button";
+import { ChatPanel } from "@/components/chat-panel";
 import { ModeNote } from "@/components/mode-note";
 import { useMode } from "@/components/mode-store";
-import { ResultView } from "@/components/result-view";
-import { useToolStream } from "@/components/use-tool-stream";
+import { useToolChat } from "@/components/use-tool-chat";
 import { useStoredForm, useStoredValue } from "@/components/use-stored";
 import { useWork } from "@/components/work-provider";
 import { TOOLS } from "@/config/tools";
@@ -24,7 +23,8 @@ export default function RoterFadenPage() {
 function Form({ initial }: { initial: { fragestellung: string; gliederung: string } }) {
   const [mode] = useMode();
   const { work, update } = useWork();
-  const { phase, answer, error, busy, run } = useToolStream("roter-faden");
+  const chat = useToolChat("roter-faden");
+  const { busy } = chat;
   const [fields, setFields] = useStoredForm("roter-faden:fields", initial);
   const [mitTexten, setMitTexten] = useStoredValue("roter-faden:mit", false);
   const [gespeichert, setGespeichert] = useState(false);
@@ -44,15 +44,14 @@ function Form({ initial }: { initial: { fragestellung: string; gliederung: strin
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setTimeout(() => resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
-    await run({ json: { tool: "roter-faden", fields: { ...fields, mitTexten: mitTexten && geschriebeneKapitel > 0 ? "ja" : "nein" } } });
+    const payload = { tool: "roter-faden", fields: { ...fields, mitTexten: mitTexten && geschriebeneKapitel > 0 ? "ja" : "nein" } };
+    await chat.start({ json: payload }, payload);
   }
 
-  const vorschlag = phase === "done" && mode === "schreiben" ? parseGliederungVorschlag(answer) : "";
-  const uebernehmen = (text: string) => {
-    const f = { ...fields, gliederung: text.slice(0, max.gliederung) };
-    setFields(f);
-    speichern(f);
-  };
+  const aktiv = chat.turns.length > 0 || busy;
+  // Im Schreibmodus ist der Vorschlag der KI der Ausgangspunkt, sonst die eigene Gliederung des Schülers.
+  const ersterVorschlag = mode === "schreiben" && chat.turns.length > 0 ? stripGliederungNotes(parseGliederungVorschlag(chat.turns[0].content)) : "";
+  const firstResult = ersterVorschlag || fields.gliederung;
 
   return (
     <main>
@@ -61,11 +60,13 @@ function Form({ initial }: { initial: { fragestellung: string; gliederung: strin
       <p className="mb-4 text-zinc-600">
         {mode === "schreiben"
           ? "Du erfährst, wo dein Gedankengang springt, welche Kapitel nichts zur Fragestellung beitragen und was fehlt. Dazu bekommst du einen Vorschlag für eine überarbeitete Gliederung."
-          : "Du erfährst, wo dein Gedankengang springt, welche Kapitel nichts zur Fragestellung beitragen und was fehlt. Eine neue Gliederung bekommst du nicht."}
+          : "Du erfährst, wo dein Gedankengang springt, welche Kapitel nichts zur Fragestellung beitragen und was fehlt. Eine neue Gliederung bekommst du nicht."}{" "}
+        Danach arbeitet ihr im Chat weiter, bis die Gliederung steht.
       </p>
       <ModeNote />
 
-      <form onSubmit={submit} className="flex flex-col gap-4">
+      {!aktiv && (
+        <form onSubmit={submit} className="flex flex-col gap-4">
         <p className="rounded bg-amber-50 p-3 text-sm text-amber-900">
           Bitte schreibe keine Namen (auch nicht deinen) und keinen Schulnamen in die Felder.
         </p>
@@ -98,24 +99,27 @@ function Form({ initial }: { initial: { fragestellung: string; gliederung: strin
           {gespeichert ? "✓ In Seminararbeit gespeichert" : "Fragestellung und Gliederung in meiner Seminararbeit speichern"}
         </button>
       </form>
+      )}
 
       <div ref={resultRef} className="scroll-mt-4">
-        <ResultView
-          phase={phase}
-          answer={answer}
-          error={error}
-          waitingText="Die KI liest deine Gliederung. Das dauert ein paar Sekunden …"
-          doneNote="Die KI kann sich irren. Entscheide selbst, was du an deiner Gliederung änderst."
-        />
-        {vorschlag && (
-          <section className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-4" aria-label="Gliederung übernehmen">
-            <h2 className="mb-2 font-semibold">Überarbeitete Gliederung übernehmen</h2>
-            <div className="flex flex-col gap-2">
-              <ApplyButton label="Übernehmen (mit Erläuterungen)" onApply={() => uebernehmen(vorschlag)} />
-              <ApplyButton label="Übernehmen (nur die Kapitelzeilen)" onApply={() => uebernehmen(stripGliederungNotes(vorschlag))} />
-            </div>
-            <p className="mt-2 text-xs text-zinc-600">Die Gliederung im Formular und in deiner Seminararbeit wird ersetzt. Danach kannst du auf der Seite „Meine Arbeit“ die Kapitel daraus anlegen.</p>
-          </section>
+        {chat.error && !aktiv && <p role="alert" className="mt-3 rounded bg-red-50 p-3 text-red-800">{chat.error}</p>}
+        {aktiv && (
+          <ChatPanel
+            chat={chat}
+            titel="Deine Gliederung"
+            firstResult={firstResult}
+            rows={10}
+            confirmLabel="Bestätigen und weiter zu den Kapiteln"
+            nextHref="/arbeit"
+            onConfirm={(text) => {
+              const f = { ...fields, gliederung: text.slice(0, max.gliederung) };
+              setFields(f);
+              speichern(f);
+            }}
+            waitingText="Die KI liest deine Gliederung. Das dauert ein paar Sekunden …"
+            hint="Die KI kann sich irren. Entscheide selbst, was du an deiner Gliederung änderst. Danach legst du in „Meine Arbeit“ die Kapitel daraus an."
+            placeholder="Beantworte die Fragen oder schick deine überarbeitete Gliederung …"
+          />
         )}
       </div>
     </main>

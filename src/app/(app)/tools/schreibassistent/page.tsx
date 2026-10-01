@@ -2,11 +2,10 @@
 
 import Link from "next/link";
 import { useRef } from "react";
-import { ApplyButton } from "@/components/apply-button";
+import { ChatPanel } from "@/components/chat-panel";
 import { ModeNote } from "@/components/mode-note";
 import { useMode } from "@/components/mode-store";
-import { ResultView } from "@/components/result-view";
-import { useToolStream } from "@/components/use-tool-stream";
+import { useToolChat } from "@/components/use-tool-chat";
 import { useStoredForm, useStoredValue } from "@/components/use-stored";
 import { newId, useWork } from "@/components/work-provider";
 import { TOOLS } from "@/config/tools";
@@ -49,9 +48,12 @@ export default function SchreibassistentPage() {
 
 function Form() {
   const { work, update } = useWork();
-  const { phase, answer, error, busy, run } = useToolStream("schreibassistent");
+  const chat = useToolChat("schreibassistent");
+  const { busy } = chat;
   const [f, setF] = useStoredForm("schreibassistent:felder", { aufgabe: "Einleitung", laenge: "mittel", fragestellung: work.fragestellung, inhalt: "", text: "", kapitelId: "" });
   const [punktId, setPunktId] = useStoredValue("schreibassistent:punkt", "");
+  const [ziel, setZiel] = useStoredValue<"ersetzen" | "anhaengen" | "neu">("schreibassistent:ziel", "neu");
+  const [erledigt, setErledigt] = useStoredValue("schreibassistent:erledigt", true);
   const resultRef = useRef<HTMLDivElement>(null);
 
   const kapitel = work.kapitel.find((k) => k.id === f.kapitelId);
@@ -73,19 +75,56 @@ function Form() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setTimeout(() => resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
-    await run({ json: { tool: "schreibassistent", fields: f } });
+    const payload = { tool: "schreibassistent", fields: f };
+    await chat.start({ json: payload }, payload);
   }
 
-  const entwurf = phase === "done" ? parseEntwurf(answer) || answer : "";
+  const aktiv = chat.turns.length > 0 || busy;
+  const ersterEntwurf = chat.turns.length > 0 ? parseEntwurf(chat.turns[0].content) || chat.turns[0].content : "";
   const cut = (s: string) => s.slice(0, WORK_LIMITS.kapitelText);
+  // Der gewählte Ziel-Ort gilt nur, wenn er möglich ist (ein Kapitel ist gewählt bzw. es ist noch Platz für ein neues).
+  const effZiel = kapitel ? ziel : "neu";
+
+  function uebernehmen(text: string) {
+    const entwurf = text.trim();
+    update((w) => {
+      let kapitelListe = w.kapitel;
+      if (kapitel && effZiel === "ersetzen") kapitelListe = w.kapitel.map((k) => (k.id === kapitel.id ? { ...k, text: cut(entwurf) } : k));
+      else if (kapitel && effZiel === "anhaengen") kapitelListe = w.kapitel.map((k) => (k.id === kapitel.id ? { ...k, text: cut(`${k.text.trimEnd()}\n\n${entwurf}`.trim()) } : k));
+      else if (w.kapitel.length < WORK_LIMITS.maxKapitel) kapitelListe = [...w.kapitel, { id: newId(), titel: f.aufgabe === "Überarbeiten" ? "Überarbeiteter Text" : f.aufgabe, text: cut(entwurf) }];
+      const punkte = punktId && erledigt ? w.punkte.map((p) => (p.id === punktId ? { ...p, erledigt: true } : p)) : w.punkte;
+      return { ...w, kapitel: kapitelListe, punkte };
+    });
+  }
+
+  const neuMoeglich = work.kapitel.length < WORK_LIMITS.maxKapitel;
+  const extra = (
+    <div className="flex flex-col gap-2 text-sm">
+      <label className="flex flex-col gap-1">
+        <span className="font-medium">Wohin soll der Text?</span>
+        <select className={`${input} min-h-12`} value={effZiel} onChange={(e) => setZiel(e.target.value as typeof ziel)}>
+          {kapitel && <option value="ersetzen">Kapitel „{kapitel.titel || "Ohne Titel"}“ ersetzen</option>}
+          {kapitel && <option value="anhaengen">An Kapitel „{kapitel.titel || "Ohne Titel"}“ anhängen</option>}
+          <option value="neu" disabled={!neuMoeglich}>Als neues Kapitel speichern</option>
+        </select>
+      </label>
+      {punktId && offene.some((p) => p.id === punktId) && (
+        <label className="flex min-h-10 items-center gap-2">
+          <input type="checkbox" className="h-5 w-5" checked={erledigt} onChange={(e) => setErledigt(e.target.checked)} />
+          Den gewählten offenen Punkt als erledigt markieren
+        </label>
+      )}
+    </div>
+  );
 
   return (
     <>
       <p className="mb-4 text-zinc-600">
-        Du gibst Stichpunkte oder einen Text, die KI formuliert daraus einen Entwurf. Fakten, die du nicht angibst, erfindet sie nicht.
+        Du gibst Stichpunkte oder einen Text, die KI formuliert daraus einen Entwurf. Fakten, die du nicht angibst, erfindet sie nicht. Danach feilt ihr im Chat am Text, bis er für dich passt.
       </p>
       <ModeNote>Der Entwurf ist nur so gut wie deine Stichpunkte. </ModeNote>
 
+      {!aktiv && (
       <form onSubmit={submit} className="flex flex-col gap-4">
         <p className="rounded bg-amber-50 p-3 text-sm text-amber-900">
           Bitte schreibe keine Namen (auch nicht deinen) und keinen Schulnamen in die Felder.
@@ -156,28 +195,26 @@ function Form() {
           {busy ? "Die KI schreibt …" : "Entwurf schreiben"}
         </button>
       </form>
+      )}
 
       <div ref={resultRef} className="scroll-mt-4">
-        <ResultView phase={phase} answer={answer} error={error} waitingText="Die KI schreibt deinen Entwurf. Das dauert einen Moment …" />
-        {phase === "done" && entwurf && (
-          <section className="mt-4 flex flex-col gap-2 rounded-lg border border-blue-200 bg-blue-50 p-4" aria-label="Entwurf übernehmen">
-            <h2 className="font-semibold">Entwurf in deine Seminararbeit übernehmen</h2>
-            {kapitel && (
-              <>
-                <ApplyButton label={`Kapitel „${kapitel.titel || "Ohne Titel"}“ durch den Entwurf ersetzen`} onApply={() => update((w) => ({ ...w, kapitel: w.kapitel.map((k) => (k.id === kapitel.id ? { ...k, text: cut(entwurf) } : k)) }))} />
-                <ApplyButton label={`An Kapitel „${kapitel.titel || "Ohne Titel"}“ anhängen`} onApply={() => update((w) => ({ ...w, kapitel: w.kapitel.map((k) => (k.id === kapitel.id ? { ...k, text: cut(`${k.text.trimEnd()}\n\n${entwurf}`.trim()) } : k)) }))} />
-              </>
-            )}
-            <ApplyButton
-              label="Als neues Kapitel speichern"
-              disabled={work.kapitel.length >= WORK_LIMITS.maxKapitel}
-              onApply={() => update((w) => ({ ...w, kapitel: [...w.kapitel, { id: newId(), titel: f.aufgabe === "Überarbeiten" ? "Überarbeiteter Text" : f.aufgabe, text: cut(entwurf) }] }))}
-            />
-            {punktId && offene.some((p) => p.id === punktId) && (
-              <ApplyButton label="Den offenen Punkt als erledigt markieren" onApply={() => update((w) => ({ ...w, punkte: w.punkte.map((p) => (p.id === punktId ? { ...p, erledigt: true } : p)) }))} />
-            )}
-            <p className="text-xs text-zinc-600">Prüfe den Text, setze für jede Stelle „[Beleg nötig]“ eine echte Quelle ein und kennzeichne die KI-Hilfe in deiner Arbeit.</p>
-          </section>
+        {chat.error && !aktiv && <p role="alert" className="mt-3 rounded bg-red-50 p-3 text-red-800">{chat.error}</p>}
+        {aktiv && (
+          <ChatPanel
+            chat={chat}
+            titel="Dein Entwurf"
+            firstResult={ersterEntwurf}
+            rows={14}
+            extra={extra}
+            canConfirm={effZiel !== "neu" || neuMoeglich}
+            confirmLabel="Bestätigen und weiter zum Abschluss-Check"
+            nextHref="/tools/abschluss-check"
+            againLabel="Speichern und nächsten Text schreiben"
+            onConfirm={uebernehmen}
+            waitingText="Die KI schreibt deinen Entwurf. Das dauert einen Moment …"
+            hint=""
+            placeholder="Sag, was geändert werden soll (kürzer, sachlicher, anderer Schwerpunkt …) …"
+          />
         )}
       </div>
     </>

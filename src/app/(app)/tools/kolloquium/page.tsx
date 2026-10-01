@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { FormattedText } from "@/components/formatted-text";
 import { ModeNote } from "@/components/mode-note";
 import { useMode } from "@/components/mode-store";
 import { Spinner } from "@/components/result-view";
-import { ApplyButton } from "@/components/apply-button";
 import { useToolStream } from "@/components/use-tool-stream";
 import { useStoredValue } from "@/components/use-stored";
 import { newId, useWork } from "@/components/work-provider";
@@ -35,7 +35,8 @@ export default function KolloquiumPage() {
 }
 
 function Kolloquium({ initialKurzfassung }: { initialKurzfassung: string }) {
-  const { work, update } = useWork();
+  const { work, update, saveNow } = useWork();
+  const router = useRouter();
   const [mode] = useMode();
   const { phase, answer, error, busy, run, reset } = useToolStream("kolloquium");
   // Das ganze Gespräch (Eingaben, Fragen, Antworten, Feedback) bleibt beim Verlassen der Seite erhalten.
@@ -107,6 +108,13 @@ function Kolloquium({ initialKurzfassung }: { initialKurzfassung: string }) {
     setStage("done");
     update((w) => ({ ...w, meilensteine: { ...w.meilensteine, kolloquium: Date.now() } }));
     reset();
+  }
+
+  // Bestätigen: Lücken als offene Punkte speichern, dann zum nächsten Schritt.
+  async function weiter(mitPunkten: boolean) {
+    if (mitPunkten) update((w) => ({ ...w, punkte: ersetzeOffenePunkte(w.punkte, "kolloquium", parseLuecken(feedback), newId) }));
+    await saveNow();
+    router.push(mitPunkten ? "/arbeit#punkte" : "/arbeit");
   }
 
   function restart() {
@@ -234,15 +242,18 @@ function Kolloquium({ initialKurzfassung }: { initialKurzfassung: string }) {
             <FormattedText text={feedback} />
           </section>
           <p className="mt-3 text-sm text-zinc-500">Die KI kann sich irren. Nimm die Tipps als Anregung und übe in eigenen Worten.</p>
-          {parseLuecken(feedback).length > 0 && (
+          {parseLuecken(feedback).length > 0 ? (
             <section className="mt-4 flex flex-col gap-2 rounded-lg border border-blue-200 bg-blue-50 p-4" aria-label="Lücken übernehmen">
               <h2 className="font-semibold">{parseLuecken(feedback).length} Lücken als offene Punkte übernehmen</h2>
-              <ApplyButton
-                label="Als offene Punkte speichern"
-                onApply={() => update((w) => ({ ...w, punkte: ersetzeOffenePunkte(w.punkte, "kolloquium", parseLuecken(feedback), newId) }))}
-              />
-              <p className="text-xs text-zinc-600">Damit verbesserst du danach im Schreibassistenten gezielt die Stellen, an denen es noch fehlt.</p>
+              <button type="button" onClick={() => void weiter(true)} className="min-h-12 rounded bg-blue-900 px-4 text-base text-white">
+                Bestätigen und weiter zum Nachbessern
+              </button>
+              <p className="text-xs text-zinc-600">Die Lücken werden als offene Punkte gespeichert. Damit verbesserst du danach gezielt die Stellen, an denen es noch fehlt.</p>
             </section>
+          ) : (
+            <button type="button" onClick={() => void weiter(false)} className="mt-4 min-h-12 w-full rounded bg-blue-900 px-4 text-base text-white">
+              Weiter zu meiner Seminararbeit
+            </button>
           )}
           <button onClick={restart} className="mt-4 min-h-12 w-full rounded bg-zinc-900 px-4 text-base text-white">Neues Gespräch</button>
         </>

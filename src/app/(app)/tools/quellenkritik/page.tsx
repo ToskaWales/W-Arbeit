@@ -4,9 +4,11 @@ import Link from "next/link";
 import { useRef, useState } from "react";
 import { useAccess } from "@/components/access-provider";
 import { ApplyButton } from "@/components/apply-button";
+import { ChatPanel } from "@/components/chat-panel";
 import { ModeNote } from "@/components/mode-note";
 import { useMode } from "@/components/mode-store";
 import { ResultView } from "@/components/result-view";
+import { useToolChat } from "@/components/use-tool-chat";
 import { useToolStream } from "@/components/use-tool-stream";
 import { useStoredForm, useStoredValue } from "@/components/use-stored";
 import { newId, useWork } from "@/components/work-provider";
@@ -38,7 +40,8 @@ function Kritik() {
   const { restCents } = useAccess();
   const [modus] = useMode();
   const { work, update } = useWork();
-  const { phase, answer, error, busy, run } = useToolStream("quellenkritik");
+  const chat = useToolChat("quellenkritik");
+  const { busy } = chat;
   // Eingaben bleiben beim Verlassen der Seite erhalten. Nur die PDF-Datei selbst kann der Browser nicht merken.
   const [k, setK] = useStoredValue("quellenkritik:kritik", { art: "pdf" as "pdf" | "text", verwendung: "", text: "", quelleId: "", titel: "" });
   const { art, verwendung, text, quelleId, titel } = k;
@@ -78,15 +81,20 @@ function Kritik() {
       form.set("tool", "quellenkritik");
       form.set("fields", JSON.stringify({ verwendung }));
       form.set("file", file);
-      await run({ form });
+      // Folgerunden schicken das PDF nicht noch einmal (spart Tokens): Die erste Analyse genügt der KI als Grundlage.
+      await chat.start({ form }, { tool: "quellenkritik", fields: { verwendung, text: "" } });
     } else {
-      await run({ json: { tool: "quellenkritik", fields: { verwendung, text } } });
+      const payload = { tool: "quellenkritik", fields: { verwendung, text } };
+      await chat.start({ json: payload }, payload);
     }
   }
 
-  // Die Tabelle "Einschätzung" wird als lesbare Bewertung an der Quelle gespeichert.
-  function bewertungSpeichern() {
-    const bewertung = tabellenText(answer, "Einschätzung").slice(0, WORK_LIMITS.quelleBewertung);
+  const aktiv = chat.turns.length > 0 || busy;
+  const ersteBewertung = chat.turns.length > 0 ? tabellenText(chat.turns[0].content, "Einschätzung") : "";
+
+  // Die bestätigte Einschätzung wird als lesbare Bewertung an der Quelle gespeichert.
+  function bewertungSpeichern(text: string) {
+    const bewertung = text.slice(0, WORK_LIMITS.quelleBewertung);
     update((w) => {
       if (quelleId && w.quellen.some((q) => q.id === quelleId)) {
         return { ...w, quellen: w.quellen.map((q) => (q.id === quelleId ? { ...q, bewertung, status: "geprueft" as const, titel: titel.trim() || q.titel } : q)) };
@@ -102,11 +110,12 @@ function Kritik() {
   return (
     <section aria-label="Quelle prüfen">
       <p className="mb-4 text-zinc-600">
-        Du bekommst eine kritische Einschätzung zu Autor, Interessen, Methodik, Aktualität, Schwächen und Eignung für deine Fragestellung.
+        Du bekommst eine kritische Einschätzung zu Autor, Interessen, Methodik, Aktualität, Schwächen und Eignung für deine Fragestellung. Danach klärt ihr im Chat offene Punkte und speicherst die Einschätzung bei der Quelle.
         {modus === "schreiben" && " Dazu bekommst du einen Formulierungsvorschlag für einen Absatz zur Quellenkritik."}
       </p>
       <ModeNote />
 
+      {!aktiv && (
       <form onSubmit={submit} className="flex flex-col gap-4">
         <p className="rounded bg-amber-50 p-3 text-sm text-amber-900">
           Bitte lade nichts mit persönlichen Daten hoch (zum Beispiel deinen Namen oder deine Schule). Das PDF wird nicht gespeichert.
@@ -155,24 +164,42 @@ function Kritik() {
           {busy ? "Die KI liest mit …" : "Quelle prüfen"}
         </button>
       </form>
+      )}
 
       <div ref={resultRef} className="scroll-mt-4">
-        <ResultView
-          phase={phase}
-          answer={answer}
-          error={error}
-          waitingText={art === "pdf" ? "Die KI liest dein PDF. Das kann etwas länger dauern …" : "Die KI liest deine Quelle …"}
-          doneNote="Die KI kann sich irren. Prüfe die Angaben selbst nach, besonders zu Autor und Herkunft."
-        />
-        {phase === "done" && tabellenText(answer, "Einschätzung") && (
-          <section className="mt-4 flex flex-col gap-3 rounded-lg border border-blue-200 bg-blue-50 p-4" aria-label="In Quellenliste speichern">
-            <h2 className="font-semibold">Bewertung in deiner Quellenliste speichern</h2>
-            <label className="flex flex-col gap-1">
-              <span className="text-sm">Titel der Quelle</span>
-              <input className={input} value={titel} maxLength={WORK_LIMITS.quelleTitel} onChange={(e) => setTitel(e.target.value)} placeholder="z. B. Autor, Titel, Jahr" />
-            </label>
-            <ApplyButton label={quelleId ? "Bewertung an dieser Quelle speichern" : "Als neue Quelle speichern"} disabled={!quelleId && !titel.trim()} onApply={bewertungSpeichern} />
-          </section>
+        {chat.error && !aktiv && <p role="alert" className="mt-3 rounded bg-red-50 p-3 text-red-800">{chat.error}</p>}
+        {aktiv && (
+          <ChatPanel
+            chat={chat}
+            titel="Einschätzung der Quelle"
+            firstResult={ersteBewertung}
+            rows={8}
+            extra={
+              <div className="flex flex-col gap-2 text-sm">
+                {quellen.length > 0 && (
+                  <label className="flex flex-col gap-1">
+                    <span className="font-medium">An welcher Quelle aus deiner Liste speichern?</span>
+                    <select className={`${input} min-h-12`} value={quelleId} onChange={(e) => waehleQuelle(e.target.value)}>
+                      <option value="">Als neue Quelle</option>
+                      {quellen.map((q) => <option key={q.id} value={q.id}>{q.titel || "Ohne Titel"}</option>)}
+                    </select>
+                  </label>
+                )}
+                <label className="flex flex-col gap-1">
+                  <span className="font-medium">Titel der Quelle</span>
+                  <input className={input} value={titel} maxLength={WORK_LIMITS.quelleTitel} onChange={(e) => setTitel(e.target.value)} placeholder="z. B. Autor, Titel, Jahr" />
+                </label>
+              </div>
+            }
+            canConfirm={!!quelleId || !!titel.trim()}
+            confirmLabel="Speichern und weiter zur Gliederung"
+            nextHref="/tools/roter-faden"
+            againLabel="Speichern und nächste Quelle prüfen"
+            onConfirm={bewertungSpeichern}
+            waitingText={art === "pdf" ? "Die KI liest dein PDF. Das kann etwas länger dauern …" : "Die KI liest deine Quelle …"}
+            hint="Die KI kann sich irren. Prüfe die Angaben selbst nach, besonders zu Autor und Herkunft."
+            placeholder="Frag nach, widersprich oder bitte um eine Änderung an der Einschätzung …"
+          />
         )}
       </div>
     </section>

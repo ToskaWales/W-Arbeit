@@ -3,15 +3,14 @@
 import Link from "next/link";
 import { useRef } from "react";
 import { useAccess } from "@/components/access-provider";
-import { ApplyButton } from "@/components/apply-button";
+import { ChatPanel } from "@/components/chat-panel";
 import { ModeNote } from "@/components/mode-note";
 import { useMode } from "@/components/mode-store";
-import { ResultView } from "@/components/result-view";
 import { useStoredValue } from "@/components/use-stored";
-import { useToolStream } from "@/components/use-tool-stream";
+import { useToolChat } from "@/components/use-tool-chat";
 import { newId, useWork } from "@/components/work-provider";
 import { ABSCHLUSS_KAPITEL_MIN_BUDGET_CENTS, ABSCHLUSS_KAPITEL_MIN_CHARS, TOOLS } from "@/config/tools";
-import { parseNachbesserungen } from "@/lib/answer-parse";
+import { bulletItems, parseNachbesserungen } from "@/lib/answer-parse";
 import { ersetzeOffenePunkte } from "@/lib/punkte";
 
 const MIN_CENTS = TOOLS.abschluss.minBudgetCents;
@@ -22,7 +21,8 @@ export default function AbschlussPage() {
   const { work, loaded, update } = useWork();
   const { restCents } = useAccess();
   const [mode] = useMode();
-  const { phase, answer, error, busy, run } = useToolStream("abschluss");
+  const chat = useToolChat("abschluss");
+  const { busy } = chat;
   const [fokus, setFokus] = useStoredValue("abschluss:fokus", "alles");
   const [kapitelId, setKapitelId] = useStoredValue("abschluss:kapitel", ""); // leer = ganze Arbeit
   const resultRef = useRef<HTMLDivElement>(null);
@@ -36,17 +36,20 @@ export default function AbschlussPage() {
   const bereit = einzeln || zeichen >= 200;
   const minCents = einzeln ? ABSCHLUSS_KAPITEL_MIN_BUDGET_CENTS : MIN_CENTS;
   const zuWenig = restCents !== null && restCents < minCents;
-  const nachbesserungen = phase === "done" ? parseNachbesserungen(answer) : [];
+  const aktiv = chat.turns.length > 0 || busy;
+  const ersteListe = chat.turns.length > 0 ? parseNachbesserungen(chat.turns[0].content).map((t) => `- ${t}`).join("\n") : "";
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setTimeout(() => resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
-    const text = await run({ json: { tool: "abschluss", fields: { fokus, kapitelId: kapitel?.id ?? "" } } });
+    const payload = { tool: "abschluss", fields: { fokus, kapitelId: kapitel?.id ?? "" } };
+    const text = await chat.start({ json: payload }, payload);
     // Nur die Prüfung der ganzen Arbeit zählt für den Fahrplan
     if (text && !kapitel) update((w) => ({ ...w, meilensteine: { ...w.meilensteine, abschlussCheck: Date.now() } }));
   }
 
-  function alsPunkteUebernehmen() {
+  function alsPunkteUebernehmen(liste: string) {
+    const nachbesserungen = bulletItems(liste);
     // Bei einem einzelnen Kapitel nur ergänzen, damit die offenen Punkte zu anderen Kapiteln bleiben.
     const texte = kapitel ? nachbesserungen.map((t) => (t.startsWith("[") ? t : `[${kapitel.titel || "Kapitel"}] ${t}`)) : nachbesserungen;
     update((w) => ({ ...w, punkte: ersetzeOffenePunkte(w.punkte, "abschluss", texte, newId, !!kapitel) }));
@@ -57,12 +60,12 @@ export default function AbschlussPage() {
       <Link href="/" className="text-sm text-zinc-600 underline">← Zurück</Link>
       <h1 className="mb-1 mt-2 text-2xl font-semibold">Abschluss-Check</h1>
       <p className="mb-4 text-zinc-600">
-        Die KI prüft Fragestellung, roten Faden, Belege, Vollständigkeit sowie Sprache und Form und nennt die wichtigsten Nachbesserungen.
+        Die KI prüft Fragestellung, roten Faden, Belege, Vollständigkeit sowie Sprache und Form und nennt die wichtigsten Nachbesserungen. Danach klärt ihr im Chat, welche davon wirklich zu tun sind.
         {mode === "schreiben" && " Zu den zwei wichtigsten Punkten bekommst du außerdem Verbesserungsvorschläge."}
       </p>
       <ModeNote />
 
-      {!bereit ? (
+      {aktiv ? null : !bereit ? (
         <div className="rounded-lg border border-zinc-300 bg-white p-4">
           <p className="mb-3">Für den Abschluss-Check brauche ich geschriebene Kapitel in deiner Seminararbeit (mindestens etwa 200 Zeichen). Bisher: {zeichen} Zeichen.</p>
           <Link href="/arbeit" className="flex min-h-12 items-center justify-center rounded bg-zinc-900 px-4 text-white">Zu meiner Seminararbeit</Link>
@@ -95,22 +98,20 @@ export default function AbschlussPage() {
       )}
 
       <div ref={resultRef} className="scroll-mt-4">
-        <ResultView
-          phase={phase}
-          answer={answer}
-          error={error}
-          waitingText="Die KI liest deine Arbeit. Das kann eine halbe Minute dauern …"
-          doneNote="Die KI kann sich irren. Entscheide selbst, welche Punkte du übernimmst."
-        />
-        {nachbesserungen.length > 0 && (
-          <section className="mt-4 flex flex-col gap-2 rounded-lg border border-blue-200 bg-blue-50 p-4" aria-label="Nachbesserungen übernehmen">
-            <h2 className="font-semibold">{nachbesserungen.length} Nachbesserungen als offene Punkte übernehmen</h2>
-            <ApplyButton label="Alle als offene Punkte speichern" onApply={alsPunkteUebernehmen} />
-            <p className="text-xs text-zinc-600">
-              {kapitel ? "Die Punkte werden ergänzt, bestehende bleiben." : "Noch offene Punkte aus dem letzten Abschluss-Check werden dabei ersetzt. Erledigte bleiben."} Du findest sie danach unter{" "}
-              <Link href="/arbeit#punkte" className="underline">Meine Arbeit</Link>. Im Schreibassistenten kannst du sie einzeln angehen.
-            </p>
-          </section>
+        {chat.error && !aktiv && <p role="alert" className="mt-3 rounded bg-red-50 p-3 text-red-800">{chat.error}</p>}
+        {aktiv && (
+          <ChatPanel
+            chat={chat}
+            titel="Nachbesserungen (werden zu offenen Punkten)"
+            firstResult={ersteListe}
+            rows={10}
+            confirmLabel="Bestätigen und weiter zum Nachbessern"
+            nextHref="/arbeit#punkte"
+            onConfirm={alsPunkteUebernehmen}
+            waitingText="Die KI liest deine Arbeit. Das kann eine halbe Minute dauern …"
+            hint="Die KI kann sich irren. Entscheide selbst, welche Punkte du übernimmst: Streiche hier Zeilen, die du nicht willst. Noch offene Punkte aus dem letzten Abschluss-Check werden ersetzt, erledigte bleiben."
+            placeholder="Frag nach, widersprich einem Punkt oder bitte um Änderungen an der Liste …"
+          />
         )}
       </div>
     </main>

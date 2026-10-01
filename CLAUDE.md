@@ -144,6 +144,14 @@ System-Prompts liegen in `src/prompts/` (eine Datei pro Tool), damit ich sie lei
   KI-Hinweis (Hinweis auf Selbstständigkeitserklärung und Offenlegung der KI-Nutzung), Hinweis "keine Namen eingeben"
 - Fertig, wenn: Checkliste unten komplett abgehakt
 
+**M11 Tools als Chat mit Schritt-Ablauf**
+- Fragestellung, Quellenkritik, Roter Faden, Schreibassistent und Abschluss-Check laufen nach der ersten Antwort als Chat weiter (Kolloquium war schon einer, Quellensuche bleibt eine einzelne Suche).
+  Die KI nennt in jeder Antwort einen `[ERGEBNIS]…[/ERGEBNIS]`-Block (Prompt: `src/prompts/chat.ts`, Parser: `src/lib/chat.ts`); der Schüler kann ihn ändern und mit
+  „Bestätigen und weiter“ in die Seminararbeit speichern und zum nächsten Schritt gehen. Im Sparring-Modus steht im Block nur, was der Schüler selbst formuliert hat.
+- Verlauf nur im Browser (Session Storage), pro Anfrage wird er mitgeschickt und serverseitig geprüft. Limit: 10 Nachrichten des Schülers pro Gespräch (`CHAT` in `src/config/tools.ts`).
+  Folgerunden schicken PDF und den Text der ganzen Arbeit nicht noch einmal (Tokens sparen); Mindestbudget dort 3 Cent.
+- Fertig, wenn: der Ablauf mit echter KI im Browser durchläuft (Fragestellung → Quellen → Gliederung → Schreiben → Abschluss-Check), Tests laufen. Gemessen: etwa 1 Cent pro Chat-Anfrage.
+
 **M9 Tokens sparen**
 - Stand pro Tool (Eingaben, Ergebnis, laufender Abruf, Kolloquium-Chat) bleibt im Browser erhalten (`src/lib/tool-store.ts`, Session Storage, beim Abmelden gelöscht);
   gleiche Eingabe wird nicht ohne Rückfrage doppelt berechnet; laufender Abruf wird nicht doppelt gestartet
